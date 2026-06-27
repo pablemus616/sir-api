@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Opportunity } from './opportunity.entity';
@@ -6,6 +6,8 @@ import { PipelineStage } from '../pipeline-stages/pipeline-stage.entity';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
 import { QueryOpportunityDto } from './dto/query-opportunity.dto';
+import { ChangeStageDto } from './dto/change-stage.dto';
+import { OpportunityStatus } from '../config/enums';
 
 @Injectable()
 export class OpportunitiesService {
@@ -76,6 +78,33 @@ export class OpportunitiesService {
   async update(id: number, dto: UpdateOpportunityDto): Promise<Opportunity> {
     const opportunity = await this.findOne(id);
     Object.assign(opportunity, dto);
+    return this.opportunityRepository.save(opportunity);
+  }
+
+  async changeStage(id: number, dto: ChangeStageDto): Promise<Opportunity> {
+    const opportunity = await this.findOne(id);
+    const stage = await this.pipelineStageRepository.findOne({
+      where: { id: dto.pipelineStageId },
+    });
+    if (!stage) {
+      throw new NotFoundException('Pipeline stage not found');
+    }
+    if (!stage.active) {
+      throw new BadRequestException('Pipeline stage is not active');
+    }
+    opportunity.pipelineStageId = stage.id;
+    opportunity.probability = dto.probability ?? stage.probability;
+    if (stage.isWon) {
+      opportunity.status = OpportunityStatus.WON;
+      opportunity.wonAt = new Date();
+    }
+    if (stage.isLost) {
+      opportunity.status = OpportunityStatus.LOST;
+      opportunity.lostAt = new Date();
+      if (dto.lostReason !== undefined) {
+        opportunity.lostReason = dto.lostReason;
+      }
+    }
     return this.opportunityRepository.save(opportunity);
   }
 
