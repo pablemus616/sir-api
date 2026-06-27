@@ -1,0 +1,46 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { AuthModule } from './auth/auth.module';
+import { SnakeNamingStrategy } from './config/snake-naming.strategy';
+
+
+@Module({
+  imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 20
+      },
+    ]),
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get('PG_HOST'),
+        username: configService.get('PG_USER'),
+        password: configService.get('PG_PASS'),
+        database: configService.get('PG_DB'),
+        synchronize: configService.get('NODE_ENV') !== 'production',
+        migrationsRun: false,
+        autoLoadEntities: true,
+        namingStrategy: new SnakeNamingStrategy(),
+        ssl: {
+          rejectUnauthorized: false,
+        },
+        logging: ['error', 'warn'],
+      }),
+    }),
+    AuthModule,
+  ],
+  controllers: [],
+  providers: [{
+    provide: APP_GUARD,
+    useClass: ThrottlerGuard,
+  }],
+})
+export class MainModule {}
