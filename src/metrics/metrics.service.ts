@@ -229,4 +229,21 @@ export class MetricsService {
         raw.avgResponseSeconds === null ? 0 : Number(raw.avgResponseSeconds),
     };
   }
+
+  async recruitmentFunnel(filter: MetricsFilterDto) {
+    const qb = this.applicationRepo
+      .createQueryBuilder('a')
+      .leftJoin('a.opportunity', 'o')
+      .leftJoin('o.client', 'c')
+      .select('a.stage', 'stage')
+      .addSelect('COUNT(a.id)', 'count')
+      .groupBy('a.stage');
+    this.applyOpportunityScope(qb, filter);
+    this.applyDateRange(qb, filter, 'a.appliedAt');
+    const rows = await qb.getRawMany();
+    return rows.map((r) => ({
+      stage: r.stage,
+      count: Number(r.count) || 0,
+    }));
+  }
 }

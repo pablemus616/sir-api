@@ -235,4 +235,25 @@ describe('MetricsService', () => {
       expect(res.avgResponseSeconds).toBe(0);
     });
   });
+
+  describe('recruitmentFunnel', () => {
+    it('counts applications by stage applying opportunity scope', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        { stage: 'applied', count: '12' },
+        { stage: 'interview', count: '4' },
+        { stage: 'hired', count: '2' },
+      ]);
+      applicationRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.recruitmentFunnel({ clientId: 3 });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('o.clientId = :clientId', { clientId: 3 });
+      expect(res).toEqual([
+        { stage: 'applied', count: 12 },
+        { stage: 'interview', count: 4 },
+        { stage: 'hired', count: 2 },
+      ]);
+    });
+  });
 });
