@@ -264,9 +264,12 @@ export class MetricsService {
       .addGroupBy('o.clientId');
     this.applyOpportunityScope(qb, filter);
     this.applyDateRange(qb, filter, 'p.placementDate');
+    if (filter.recruiterId) {
+      qb.andWhere('p.placedByEmployeeId = :recruiterId', { recruiterId: filter.recruiterId });
+    }
     const rows = await qb.getRawMany();
     return rows.map((r) => ({
-      recruiterId: Number(r.recruiterId),
+      recruiterId: Number(r.recruiterId) || 0,
       clientId: Number(r.clientId),
       count: Number(r.count) || 0,
       totalFee: Number(r.totalFee) || 0,

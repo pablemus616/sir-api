@@ -41,6 +41,11 @@ export class MetricsFilterDto {
   stageId?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  recruiterId?: number;
+
+  @IsOptional()
   @IsIn(['open', 'won', 'lost'])
   status?: string;
 }

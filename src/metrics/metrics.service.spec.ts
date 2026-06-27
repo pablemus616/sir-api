@@ -278,5 +278,17 @@ describe('MetricsService', () => {
       expect(res[1].totalFee).toBe(0);
       expect(res[1].avgTimeToFillSeconds).toBe(0);
     });
+
+    it('filters by recruiterId when provided', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        { recruiterId: '4', clientId: '3', count: '2', totalFee: '5000.00', avgTimeToFillSeconds: '864000' },
+      ]);
+      placementRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.placements({ recruiterId: 4 });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('p.placedByEmployeeId = :recruiterId', { recruiterId: 4 });
+    });
   });
 });
