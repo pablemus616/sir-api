@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
+import { PermissionsModule } from './permissions/permissions.module';
 import { SnakeNamingStrategy } from './config/snake-naming.strategy';
 import { JwtTokenService } from './config/jwt.service';
 import { JwtAuthGuard } from './config/jwt-auth.guard';
@@ -31,6 +32,7 @@ import { RolesGuard } from './config/roles.guard';
       }),
     }),
     AuthModule,
+    PermissionsModule,
   ],
   controllers: [],
   providers: [
