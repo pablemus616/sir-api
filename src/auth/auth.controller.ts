@@ -1,10 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Post, Req } from '@nestjs/common';
-import { FastifyRequest } from 'fastify';
+import type { FastifyRequest } from 'fastify';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { Public } from '../config/public.decorator';
-import { CurrentUser, AuthUser } from '../config/current-user.decorator';
+import { CurrentUser, type AuthUser } from '../config/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
