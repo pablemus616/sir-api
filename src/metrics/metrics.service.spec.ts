@@ -256,4 +256,27 @@ describe('MetricsService', () => {
       ]);
     });
   });
+
+  describe('placements', () => {
+    it('aggregates placements with fee and time-to-fill by recruiter/client', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        { recruiterId: '4', clientId: '3', count: '2', totalFee: '5000.00', avgTimeToFillSeconds: '864000' },
+        { recruiterId: '4', clientId: '7', count: '1', totalFee: null, avgTimeToFillSeconds: null },
+      ]);
+      placementRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.placements({});
+
+      expect(res[0]).toEqual({
+        recruiterId: 4,
+        clientId: 3,
+        count: 2,
+        totalFee: 5000,
+        avgTimeToFillSeconds: 864000,
+      });
+      expect(res[1].totalFee).toBe(0);
+      expect(res[1].avgTimeToFillSeconds).toBe(0);
+    });
+  });
 });

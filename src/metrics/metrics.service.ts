@@ -246,4 +246,32 @@ export class MetricsService {
       count: Number(r.count) || 0,
     }));
   }
+
+  async placements(filter: MetricsFilterDto) {
+    const qb = this.placementRepo
+      .createQueryBuilder('p')
+      .leftJoin('p.opportunity', 'o')
+      .leftJoin('o.client', 'c')
+      .select('p.placedByEmployeeId', 'recruiterId')
+      .addSelect('o.clientId', 'clientId')
+      .addSelect('COUNT(p.id)', 'count')
+      .addSelect('SUM(p.fee)', 'totalFee')
+      .addSelect(
+        'AVG(EXTRACT(EPOCH FROM (CAST(p.placementDate AS timestamptz) - o.createdAt)))',
+        'avgTimeToFillSeconds',
+      )
+      .groupBy('p.placedByEmployeeId')
+      .addGroupBy('o.clientId');
+    this.applyOpportunityScope(qb, filter);
+    this.applyDateRange(qb, filter, 'p.placementDate');
+    const rows = await qb.getRawMany();
+    return rows.map((r) => ({
+      recruiterId: Number(r.recruiterId),
+      clientId: Number(r.clientId),
+      count: Number(r.count) || 0,
+      totalFee: Number(r.totalFee) || 0,
+      avgTimeToFillSeconds:
+        r.avgTimeToFillSeconds === null ? 0 : Number(r.avgTimeToFillSeconds),
+    }));
+  }
 }
