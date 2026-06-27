@@ -5,16 +5,13 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { SnakeNamingStrategy } from './config/snake-naming.strategy';
-
+import { JwtTokenService } from './config/jwt.service';
+import { JwtAuthGuard } from './config/jwt-auth.guard';
+import { RolesGuard } from './config/roles.guard';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 20
-      },
-    ]),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 20 }]),
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -29,18 +26,18 @@ import { SnakeNamingStrategy } from './config/snake-naming.strategy';
         migrationsRun: false,
         autoLoadEntities: true,
         namingStrategy: new SnakeNamingStrategy(),
-        ssl: {
-          rejectUnauthorized: false,
-        },
+        ssl: { rejectUnauthorized: false },
         logging: ['error', 'warn'],
       }),
     }),
     AuthModule,
   ],
   controllers: [],
-  providers: [{
-    provide: APP_GUARD,
-    useClass: ThrottlerGuard,
-  }],
+  providers: [
+    JwtTokenService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class MainModule {}
