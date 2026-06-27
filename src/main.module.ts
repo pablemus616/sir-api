@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
+import { OpportunitiesModule } from './opportunities/opportunities.module';
 import { SectorsModule } from './sectors/sectors.module';
 import { PositionAreasModule } from './position-areas/position-areas.module';
 import { ContactTypesModule } from './contact-types/contact-types.module';
@@ -57,6 +58,7 @@ import { RolesGuard } from './config/roles.guard';
     PermissionsModule,
     RolesModule,
     UsersModule,
+    OpportunitiesModule,
   ],
   controllers: [],
   providers: [
