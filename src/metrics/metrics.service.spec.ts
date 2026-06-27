@@ -136,4 +136,22 @@ describe('MetricsService', () => {
       expect(res.pendingRequests).toBe(2);
     });
   });
+
+  describe('pipeline', () => {
+    it('maps stage rows parsing count and amount', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        { stageId: '1', stageName: 'Contacto inicial', sortOrder: '1', count: '4', amount: '12000.00' },
+        { stageId: '5', stageName: 'Propuesta enviada', sortOrder: '5', count: '2', amount: null },
+      ]);
+      opportunityRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.pipeline({});
+
+      expect(res).toEqual([
+        { stageId: 1, stageName: 'Contacto inicial', sortOrder: 1, count: 4, amount: 12000 },
+        { stageId: 5, stageName: 'Propuesta enviada', sortOrder: 5, count: 2, amount: 0 },
+      ]);
+    });
+  });
 });

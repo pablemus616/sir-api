@@ -142,4 +142,30 @@ export class MetricsService {
       pendingRequests,
     };
   }
+
+  async pipeline(filter: MetricsFilterDto) {
+    const qb = this.opportunityRepo
+      .createQueryBuilder('o')
+      .leftJoin('o.client', 'c')
+      .innerJoin('o.pipelineStage', 's')
+      .select('s.id', 'stageId')
+      .addSelect('s.name', 'stageName')
+      .addSelect('s.sortOrder', 'sortOrder')
+      .addSelect('COUNT(o.id)', 'count')
+      .addSelect('SUM(o.amount)', 'amount')
+      .groupBy('s.id')
+      .addGroupBy('s.name')
+      .addGroupBy('s.sortOrder')
+      .orderBy('s.sortOrder', 'ASC');
+    this.applyOpportunityScope(qb, filter);
+    this.applyDateRange(qb, filter, 'o.createdAt');
+    const rows = await qb.getRawMany();
+    return rows.map((r) => ({
+      stageId: Number(r.stageId),
+      stageName: r.stageName,
+      sortOrder: Number(r.sortOrder),
+      count: Number(r.count) || 0,
+      amount: Number(r.amount) || 0,
+    }));
+  }
 }
