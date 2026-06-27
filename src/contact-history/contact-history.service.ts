@@ -18,6 +18,9 @@ export class ContactHistoryService {
 
   async create(dto: CreateContactHistoryDto, employeeId: number): Promise<ContactHistory> {
     const contactTime = new Date(dto.contactTime);
+    if (dto.opportunityId) {
+      await this.touchOpportunity(dto.opportunityId, contactTime);
+    }
     const entity = this.historyRepo.create({
       employeeId,
       contactId: dto.contactId,
@@ -30,9 +33,6 @@ export class ContactHistoryService {
       opportunityId: dto.opportunityId,
     });
     const saved = await this.historyRepo.save(entity);
-    if (dto.opportunityId) {
-      await this.touchOpportunity(dto.opportunityId, contactTime);
-    }
     return this.findOne(saved.id);
   }
 

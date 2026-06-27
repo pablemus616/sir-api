@@ -69,6 +69,7 @@ describe('ContactHistoryService lastContactAt', () => {
   it('throws when opportunity does not exist', async () => {
     opportunityRepo.findOne.mockResolvedValue(null);
     await expect(service.create(baseDto as any, 7)).rejects.toBeInstanceOf(NotFoundException);
+    expect(historyRepo.save).not.toHaveBeenCalled();
   });
 
   it('seals employeeId from the current user', async () => {
