@@ -1,45 +1,55 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ColumnNumericTransformer } from '../config/numeric.transformer';
-import { CandidateStatus } from '../config/enums';
+import { Application } from '../applications/application.entity';
+
+export const CANDIDATE_STATUSES = [
+  'new',
+  'active',
+  'placed',
+  'on_hold',
+  'discarded',
+] as const;
+export type CandidateStatus = (typeof CANDIDATE_STATUSES)[number];
 
 @Entity('candidates')
 export class Candidate {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'text' })
+  @Column()
   firstName: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   secondName?: string;
 
-  @Column({ type: 'text' })
+  @Column()
   lastName: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   surName?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   nationalId?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   phoneNumber?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   email?: string;
 
   @Column({ type: 'date', nullable: true })
   birthDate?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   headline?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   source?: string;
 
   @Column({
@@ -53,9 +63,9 @@ export class Candidate {
 
   @Column({
     type: 'enum',
-    enum: CandidateStatus,
+    enum: [...CANDIDATE_STATUSES],
     enumName: 'candidate_status',
-    default: CandidateStatus.NEW,
+    default: 'new',
   })
   status: CandidateStatus;
 
@@ -64,4 +74,7 @@ export class Candidate {
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
+
+  @OneToMany(() => Application, (application) => application.candidate)
+  applications: Application[];
 }
