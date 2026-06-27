@@ -9,7 +9,7 @@ import { User } from '../users/user.entity';
 
 @Entity('sessions')
 export class Session {
-  @PrimaryColumn({ type: 'uuid' })
+  @PrimaryColumn({ type: 'uuid', default: () => 'uuidv7()' })
   id: string;
 
   @Column()
