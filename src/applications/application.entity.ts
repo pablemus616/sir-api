@@ -13,6 +13,18 @@ import { Opportunity } from '../opportunities/opportunity.entity';
 import { Employee } from '../employees/employee.entity';
 import { ApplicationStage } from '../config/enums';
 
+export { ApplicationStage };
+
+export const APPLICATION_STAGES = [
+  'applied',
+  'screening',
+  'interview',
+  'offer',
+  'hired',
+  'rejected',
+  'withdrawn',
+] as const;
+
 @Entity('applications')
 @Unique(['candidateId', 'opportunityId'])
 export class Application {

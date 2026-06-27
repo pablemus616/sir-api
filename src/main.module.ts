@@ -19,6 +19,7 @@ import { ClientContactsModule } from './client-contacts/client-contacts.module';
 import { ContactHistoryModule } from './contact-history/contact-history.module';
 import { ContactRequestsModule } from './contact-requests/contact-requests.module';
 import { CandidatesModule } from './candidates/candidates.module';
+import { ApplicationsModule } from './applications/applications.module';
 import { SnakeNamingStrategy } from './config/snake-naming.strategy';
 import { JwtTokenService } from './config/jwt.service';
 import { JwtAuthGuard } from './config/jwt-auth.guard';
@@ -61,6 +62,7 @@ import { RolesGuard } from './config/roles.guard';
     UsersModule,
     OpportunitiesModule,
     CandidatesModule,
+    ApplicationsModule,
   ],
   controllers: [],
   providers: [
