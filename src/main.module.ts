@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { SectorsModule } from './sectors/sectors.module';
 import { PositionAreasModule } from './position-areas/position-areas.module';
 import { ContactTypesModule } from './contact-types/contact-types.module';
+import { PipelineStagesModule } from './pipeline-stages/pipeline-stages.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { RolesModule } from './roles/roles.module';
@@ -41,6 +42,7 @@ import { RolesGuard } from './config/roles.guard';
     SectorsModule,
     PositionAreasModule,
     ContactTypesModule,
+    PipelineStagesModule,
     CatalogsModule,
     PermissionsModule,
     RolesModule,
