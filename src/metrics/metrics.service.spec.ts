@@ -110,4 +110,30 @@ describe('MetricsService', () => {
       expect(res.weightedValue).toBe(0);
     });
   });
+
+  describe('overview', () => {
+    it('aggregates snapshot counts and pipeline value', async () => {
+      clientRepo.count.mockResolvedValue(7);
+      opportunityRepo.count.mockResolvedValue(5);
+      candidateRepo.count.mockResolvedValue(9);
+      contactRequestRepo.count.mockResolvedValue(2);
+
+      const placementsQb = createQbMock();
+      placementsQb.getCount.mockResolvedValue(3);
+      placementRepo.createQueryBuilder.mockReturnValue(placementsQb);
+
+      const pipelineQb = createQbMock();
+      pipelineQb.getRawOne.mockResolvedValue({ pipelineValue: '85000.00' });
+      opportunityRepo.createQueryBuilder.mockReturnValue(pipelineQb);
+
+      const res = await service.overview();
+
+      expect(res.clients).toBe(7);
+      expect(res.openOpportunities).toBe(5);
+      expect(res.pipelineValue).toBe(85000);
+      expect(res.activeCandidates).toBe(9);
+      expect(res.placementsThisMonth).toBe(3);
+      expect(res.pendingRequests).toBe(2);
+    });
+  });
 });

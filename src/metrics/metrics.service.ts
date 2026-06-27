@@ -111,4 +111,35 @@ export class MetricsService {
       weightedValue,
     };
   }
+
+  async overview() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const [clients, openOpportunities, activeCandidates, pendingRequests] =
+      await Promise.all([
+        this.clientRepo.count(),
+        this.opportunityRepo.count({ where: { status: 'open' } as any }),
+        this.candidateRepo.count({ where: { status: 'active' } as any }),
+        this.contactRequestRepo.count({ where: { wasHandled: false } }),
+      ]);
+    const placementsThisMonth = await this.placementRepo
+      .createQueryBuilder('p')
+      .where('p.placementDate >= :monthStart', { monthStart })
+      .andWhere('p.placementDate < :monthEnd', { monthEnd })
+      .getCount();
+    const pipelineRaw = await this.opportunityRepo
+      .createQueryBuilder('o')
+      .select('SUM(o.amount)', 'pipelineValue')
+      .where(`o.status = 'open'`)
+      .getRawOne();
+    return {
+      clients,
+      openOpportunities,
+      pipelineValue: Number(pipelineRaw.pipelineValue) || 0,
+      activeCandidates,
+      placementsThisMonth,
+      pendingRequests,
+    };
+  }
 }
