@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
+import { SectorsModule } from './sectors/sectors.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { RolesModule } from './roles/roles.module';
@@ -35,6 +36,7 @@ import { RolesGuard } from './config/roles.guard';
       }),
     }),
     AuthModule,
+    SectorsModule,
     CatalogsModule,
     PermissionsModule,
     RolesModule,
