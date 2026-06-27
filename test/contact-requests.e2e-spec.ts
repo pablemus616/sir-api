@@ -5,6 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import { ContactRequestsModule } from '../src/contact-requests/contact-requests.module';
 import { ContactRequest } from '../src/contact-requests/contact-request.entity';
+import { GlobalResponseInterceptor } from '../src/config/global-response.interceptor';
 
 describe('ContactRequests public endpoint (e2e)', () => {
   let app: NestFastifyApplication;
@@ -25,13 +26,17 @@ describe('ContactRequests public endpoint (e2e)', () => {
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     app.setGlobalPrefix('api');
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    app.useGlobalInterceptors(new GlobalResponseInterceptor());
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
   });
 
   afterAll(async () => {
+    delete process.env.INBOUND_API_KEY;
     await app.close();
   });
+
+  afterEach(() => jest.clearAllMocks());
 
   it('rejects POST without x-api-key', () => {
     return request(app.getHttpServer())
@@ -49,7 +54,7 @@ describe('ContactRequests public endpoint (e2e)', () => {
       .send({ contactName: 'Lead', email: 'lead@acme.com' })
       .expect(201)
       .expect((res) => {
-        expect(res.body.id).toBe(1);
+        expect(res.body.data.id).toBe(1);
         expect(repo.save).toHaveBeenCalled();
       });
   });
