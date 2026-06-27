@@ -71,6 +71,11 @@ describe('AuthService', () => {
     expect(sessionRepo.delete).toHaveBeenCalledWith('sid-1');
   });
 
+  it('refresh rejects an unknown refresh token', async () => {
+    sessionRepo.findOne.mockResolvedValue(null);
+    await expect(service.refresh({ refreshToken: 'bogus' })).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
   it('logout deletes the current session', async () => {
     await service.logout({ userId: 1, employeeId: 9, roles: [], sessionId: 'sid-1' });
     expect(sessionRepo.delete).toHaveBeenCalledWith('sid-1');

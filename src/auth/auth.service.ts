@@ -76,7 +76,11 @@ export class AuthService {
   }
 
   async me(user: AuthUser): Promise<User> {
-    const found = await this.userRepo.findOne({ where: { id: user.userId }, relations: { roles: true, employee: true } });
+    const found = await this.userRepo.findOne({
+      where: { id: user.userId },
+      relations: { roles: true, employee: true },
+      select: { id: true, username: true, employeeId: true },
+    });
     if (!found) throw new NotFoundException('User not found');
     return found;
   }
