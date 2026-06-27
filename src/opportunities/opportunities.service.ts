@@ -112,33 +112,29 @@ export class OpportunitiesService {
 
   async win(id: number): Promise<Opportunity> {
     const opportunity = await this.findOne(id);
-    const stage = await this.pipelineStageRepository.findOne({
-      where: { isWon: true, active: true },
-    });
+    const stage = await this.pipelineStageRepository.findOne({ where: { isWon: true, active: true } });
+    if (!stage) throw new BadRequestException('No active won stage configured');
     opportunity.status = OpportunityStatus.WON;
     opportunity.wonAt = new Date();
-    if (stage) {
-      opportunity.pipelineStageId = stage.id;
-      opportunity.probability = stage.probability;
-    }
-    return this.opportunityRepository.save(opportunity);
+    opportunity.pipelineStageId = stage.id;
+    opportunity.probability = stage.probability;
+    await this.opportunityRepository.save(opportunity);
+    return this.findOne(id);
   }
 
   async lose(id: number, dto: LoseOpportunityDto): Promise<Opportunity> {
     const opportunity = await this.findOne(id);
-    const stage = await this.pipelineStageRepository.findOne({
-      where: { isLost: true, active: true },
-    });
+    const stage = await this.pipelineStageRepository.findOne({ where: { isLost: true, active: true } });
+    if (!stage) throw new BadRequestException('No active lost stage configured');
     opportunity.status = OpportunityStatus.LOST;
     opportunity.lostAt = new Date();
     if (dto.lostReason !== undefined) {
       opportunity.lostReason = dto.lostReason;
     }
-    if (stage) {
-      opportunity.pipelineStageId = stage.id;
-      opportunity.probability = stage.probability;
-    }
-    return this.opportunityRepository.save(opportunity);
+    opportunity.pipelineStageId = stage.id;
+    opportunity.probability = stage.probability;
+    await this.opportunityRepository.save(opportunity);
+    return this.findOne(id);
   }
 
   async remove(id: number): Promise<void> {
