@@ -200,4 +200,33 @@ export class MetricsService {
       avgCallLength: r.avgCallLength === null ? 0 : Number(r.avgCallLength),
     }));
   }
+
+  async requests(filter: MetricsFilterDto) {
+    const qb = this.contactRequestRepo
+      .createQueryBuilder('cr')
+      .select('COUNT(cr.id)', 'total')
+      .addSelect(`SUM(CASE WHEN cr.wasHandled = true THEN 1 ELSE 0 END)`, 'handled')
+      .addSelect(
+        `SUM(CASE WHEN cr.resultingClientId IS NOT NULL THEN 1 ELSE 0 END)`,
+        'converted',
+      )
+      .addSelect(
+        `AVG(CASE WHEN cr.handledAt IS NOT NULL THEN EXTRACT(EPOCH FROM (cr.handledAt - cr.createdAt)) END)`,
+        'avgResponseSeconds',
+      );
+    this.applyDateRange(qb, filter, 'cr.createdAt');
+    const raw = await qb.getRawOne();
+    const total = Number(raw.total) || 0;
+    const handled = Number(raw.handled) || 0;
+    const converted = Number(raw.converted) || 0;
+    return {
+      total,
+      handled,
+      handleRate: total > 0 ? handled / total : 0,
+      converted,
+      conversionRate: total > 0 ? converted / total : 0,
+      avgResponseSeconds:
+        raw.avgResponseSeconds === null ? 0 : Number(raw.avgResponseSeconds),
+    };
+  }
 }

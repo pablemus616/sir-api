@@ -196,4 +196,43 @@ describe('MetricsService', () => {
       expect(res[1].avgCallLength).toBe(0);
     });
   });
+
+  describe('requests', () => {
+    it('computes handle rate, conversion rate and avg response', async () => {
+      const qb = createQbMock();
+      qb.getRawOne.mockResolvedValue({
+        total: '8',
+        handled: '6',
+        converted: '2',
+        avgResponseSeconds: '3600',
+      });
+      contactRequestRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.requests({});
+
+      expect(res.total).toBe(8);
+      expect(res.handled).toBe(6);
+      expect(res.handleRate).toBeCloseTo(0.75);
+      expect(res.converted).toBe(2);
+      expect(res.conversionRate).toBeCloseTo(0.25);
+      expect(res.avgResponseSeconds).toBe(3600);
+    });
+
+    it('returns zeros when there are no requests', async () => {
+      const qb = createQbMock();
+      qb.getRawOne.mockResolvedValue({
+        total: '0',
+        handled: '0',
+        converted: '0',
+        avgResponseSeconds: null,
+      });
+      contactRequestRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.requests({});
+
+      expect(res.handleRate).toBe(0);
+      expect(res.conversionRate).toBe(0);
+      expect(res.avgResponseSeconds).toBe(0);
+    });
+  });
 });
