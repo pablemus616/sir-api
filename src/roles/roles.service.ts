@@ -57,6 +57,8 @@ export class RolesService {
 
   async removePermission(id: number, permId: number): Promise<Role> {
     const role = await this.findOne(id);
+    const permission = await this.permRepo.findOne({ where: { id: permId } });
+    if (!permission) throw new NotFoundException('Permission not found');
     role.permissions = role.permissions.filter((p) => p.id !== permId);
     return this.repo.save(role);
   }

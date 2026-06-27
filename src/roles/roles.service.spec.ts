@@ -37,7 +37,14 @@ describe('RolesService assignments', () => {
 
   it('removes a permission from the role', async () => {
     roleRepo.findOne.mockResolvedValue({ id: 1, name: 'admin', permissions: [{ id: 5 }, { id: 7 }] });
+    permRepo.findOne.mockResolvedValue({ id: 5 });
     const out = await service.removePermission(1, 5);
     expect(out.permissions.map((p: Permission) => p.id)).toEqual([7]);
+  });
+
+  it('throws NotFoundException when the permission to remove does not exist', async () => {
+    roleRepo.findOne.mockResolvedValue({ id: 1, name: 'admin', permissions: [{ id: 5 }] });
+    permRepo.findOne.mockResolvedValue(null);
+    await expect(service.removePermission(1, 99)).rejects.toBeInstanceOf(NotFoundException);
   });
 });

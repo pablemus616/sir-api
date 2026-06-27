@@ -1,11 +1,3 @@
-export enum CandidateStatus {
-  NEW = 'new',
-  ACTIVE = 'active',
-  PLACED = 'placed',
-  ON_HOLD = 'on_hold',
-  DISCARDED = 'discarded',
-}
-
 export enum Seniority {
   JUNIOR = 'junior',
   MID = 'mid',

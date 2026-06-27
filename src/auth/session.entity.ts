@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 
@@ -22,7 +23,7 @@ export class Session {
   @Column({ type: 'text', unique: true })
   token: string;
 
-  @Column({ type: 'timestamptz' })
+  @CreateDateColumn({ type: 'timestamptz' })
   creationDate: Date;
 
   @Column({ type: 'timestamptz', nullable: true })

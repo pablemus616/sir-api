@@ -1,8 +1,9 @@
 import { IsIn, IsInt, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { APPLICATION_STAGES, ApplicationStage } from '../application.entity';
+import { PaginationDto } from '../../config/pagination.dto';
 
-export class FilterApplicationsDto {
+export class FilterApplicationsDto extends PaginationDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()

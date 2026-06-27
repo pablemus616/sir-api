@@ -57,7 +57,9 @@ export class ApplicationsService {
     return this.applicationsRepository.save(application);
   }
 
-  async findAll(query: FilterApplicationsDto): Promise<Application[]> {
+  async findAll(query: FilterApplicationsDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
     const { opportunityId, candidateId, stage } = query;
     const qb = this.applicationsRepository
       .createQueryBuilder('application')
@@ -68,8 +70,9 @@ export class ApplicationsService {
     if (candidateId)
       qb.andWhere('application.candidateId = :candidateId', { candidateId });
     if (stage) qb.andWhere('application.stage = :stage', { stage });
-    qb.orderBy('application.appliedAt', 'DESC');
-    return qb.getMany();
+    qb.orderBy('application.appliedAt', 'DESC').skip((page - 1) * limit).take(limit);
+    const [items, total] = await qb.getManyAndCount();
+    return { items, total, page, limit };
   }
 
   async findOne(id: number): Promise<Application> {

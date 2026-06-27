@@ -100,13 +100,17 @@ export class OpportunitiesService {
     if (stage.isWon) {
       opportunity.status = OpportunityStatus.WON;
       opportunity.wonAt = new Date();
-    }
-    if (stage.isLost) {
+    } else if (stage.isLost) {
       opportunity.status = OpportunityStatus.LOST;
       opportunity.lostAt = new Date();
       if (dto.lostReason !== undefined) {
         opportunity.lostReason = dto.lostReason;
       }
+    } else {
+      opportunity.status = OpportunityStatus.OPEN;
+      opportunity.wonAt = null;
+      opportunity.lostAt = null;
+      opportunity.lostReason = null;
     }
     await this.opportunityRepository.save(opportunity);
     return this.findOne(id);
@@ -118,6 +122,8 @@ export class OpportunitiesService {
     if (!stage) throw new BadRequestException('No active won stage configured');
     opportunity.status = OpportunityStatus.WON;
     opportunity.wonAt = new Date();
+    opportunity.lostAt = null;
+    opportunity.lostReason = null;
     opportunity.pipelineStageId = stage.id;
     opportunity.probability = stage.probability;
     await this.opportunityRepository.save(opportunity);
@@ -130,6 +136,7 @@ export class OpportunitiesService {
     if (!stage) throw new BadRequestException('No active lost stage configured');
     opportunity.status = OpportunityStatus.LOST;
     opportunity.lostAt = new Date();
+    opportunity.wonAt = null;
     if (dto.lostReason !== undefined) {
       opportunity.lostReason = dto.lostReason;
     }

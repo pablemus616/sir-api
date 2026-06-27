@@ -33,6 +33,20 @@ describe('ApplicationsService', () => {
     repository = module.get(getRepositoryToken(Application));
   });
 
+  it('findAll returns a paginated shape', async () => {
+    const qb: any = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
+    };
+    repository.createQueryBuilder.mockReturnValue(qb);
+    const result = await service.findAll({ page: 1, limit: 20 });
+    expect(result).toEqual({ items: [{ id: 1 }], total: 1, page: 1, limit: 20 });
+  });
+
   it('create throws ConflictException when candidate already applied to opportunity', async () => {
     repository.findOne.mockResolvedValue({ id: 1 } as Application);
     await expect(

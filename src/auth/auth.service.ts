@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/co
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+
+const DUMMY_HASH = '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 import { Session } from './session.entity';
 import { User } from '../users/user.entity';
 import { JwtTokenService } from '../config/jwt.service';
@@ -19,7 +21,10 @@ export class AuthService {
 
   async login(dto: LoginDto, ip?: string): Promise<{ accessToken: string; refreshToken: string }> {
     const user = await this.userRepo.findOne({ where: { username: dto.username }, relations: { roles: true } });
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      await bcrypt.compare(dto.password, DUMMY_HASH);
+      throw new UnauthorizedException('Invalid credentials');
+    }
     const ok = await bcrypt.compare(dto.password, user.password);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
@@ -28,7 +33,7 @@ export class AuthService {
       .createQueryBuilder()
       .insert()
       .into(Session)
-      .values({ userId: user.id, token: refresh.tokenHash, ip })
+      .values({ userId: user.id, token: refresh.tokenHash, ip, creationDate: new Date() })
       .returning('id')
       .execute();
     const sid = (inserted.raw[0] as { id: string }).id;

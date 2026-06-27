@@ -116,13 +116,13 @@ export class Opportunity {
   proposalSentAt?: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
-  wonAt?: Date;
+  wonAt?: Date | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  lostAt?: Date;
+  lostAt?: Date | null;
 
   @Column({ type: 'text', nullable: true })
-  lostReason?: string;
+  lostReason?: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

@@ -239,7 +239,7 @@ export class MetricsService {
       .addSelect('COUNT(a.id)', 'count')
       .groupBy('a.stage');
     this.applyOpportunityScope(qb, filter);
-    this.applyDateRange(qb, filter, 'a.appliedAt');
+    this.applyDateRange(qb, filter, 'a.updatedAt');
     const rows = await qb.getRawMany();
     return rows.map((r) => ({
       stage: r.stage,
