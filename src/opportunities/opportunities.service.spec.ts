@@ -139,4 +139,34 @@ describe('OpportunitiesService', () => {
       expect(result.probability).toBe(0);
     });
   });
+
+  describe('win', () => {
+    it('sets status won, stamps wonAt and moves to the won stage', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1, status: 'open' });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 9, probability: 100, isWon: true, active: true,
+      });
+      opportunityRepo.save!.mockImplementation(async (o: any) => o);
+      const result = await service.win(1);
+      expect(result.status).toBe('won');
+      expect(result.wonAt).toBeInstanceOf(Date);
+      expect(result.pipelineStageId).toBe(9);
+      expect(result.probability).toBe(100);
+    });
+  });
+
+  describe('lose', () => {
+    it('sets status lost, stamps lostAt, stores reason and moves to the lost stage', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1, status: 'open' });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 10, probability: 0, isLost: true, active: true,
+      });
+      opportunityRepo.save!.mockImplementation(async (o: any) => o);
+      const result = await service.lose(1, { lostReason: 'no budget' });
+      expect(result.status).toBe('lost');
+      expect(result.lostAt).toBeInstanceOf(Date);
+      expect(result.lostReason).toBe('no budget');
+      expect(result.pipelineStageId).toBe(10);
+    });
+  });
 });

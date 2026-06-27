@@ -7,6 +7,7 @@ import { CreateOpportunityDto } from './dto/create-opportunity.dto';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
 import { QueryOpportunityDto } from './dto/query-opportunity.dto';
 import { ChangeStageDto } from './dto/change-stage.dto';
+import { LoseOpportunityDto } from './dto/lose-opportunity.dto';
 import { OpportunityStatus } from '../config/enums';
 
 @Injectable()
@@ -107,6 +108,37 @@ export class OpportunitiesService {
     }
     await this.opportunityRepository.save(opportunity);
     return this.findOne(id);
+  }
+
+  async win(id: number): Promise<Opportunity> {
+    const opportunity = await this.findOne(id);
+    const stage = await this.pipelineStageRepository.findOne({
+      where: { isWon: true, active: true },
+    });
+    opportunity.status = OpportunityStatus.WON;
+    opportunity.wonAt = new Date();
+    if (stage) {
+      opportunity.pipelineStageId = stage.id;
+      opportunity.probability = stage.probability;
+    }
+    return this.opportunityRepository.save(opportunity);
+  }
+
+  async lose(id: number, dto: LoseOpportunityDto): Promise<Opportunity> {
+    const opportunity = await this.findOne(id);
+    const stage = await this.pipelineStageRepository.findOne({
+      where: { isLost: true, active: true },
+    });
+    opportunity.status = OpportunityStatus.LOST;
+    opportunity.lostAt = new Date();
+    if (dto.lostReason !== undefined) {
+      opportunity.lostReason = dto.lostReason;
+    }
+    if (stage) {
+      opportunity.pipelineStageId = stage.id;
+      opportunity.probability = stage.probability;
+    }
+    return this.opportunityRepository.save(opportunity);
   }
 
   async remove(id: number): Promise<void> {
