@@ -20,7 +20,8 @@ export class UsersService {
     const exists = await this.repo.findOne({ where: { username: dto.username } });
     if (exists) throw new ConflictException('Username already exists');
     const password = await bcrypt.hash(dto.password, 10);
-    return this.repo.save(this.repo.create({ ...dto, password }));
+    const user = await this.repo.save(this.repo.create({ ...dto, password }));
+    return this.findOne(user.id);
   }
 
   async findAll(pagination: PaginationDto) {
@@ -66,13 +67,15 @@ export class UsersService {
     const role = await this.roleRepo.findOne({ where: { id: dto.roleId } });
     if (!role) throw new NotFoundException('Role not found');
     if (!user.roles.some((r) => r.id === role.id)) user.roles.push(role);
-    return this.repo.save(user);
+    await this.repo.save(user);
+    return this.findOne(id);
   }
 
   async removeRole(id: number, roleId: number): Promise<User> {
     const user = await this.repo.findOne({ where: { id }, relations: { roles: true } });
     if (!user) throw new NotFoundException('User not found');
     user.roles = user.roles.filter((r) => r.id !== roleId);
-    return this.repo.save(user);
+    await this.repo.save(user);
+    return this.findOne(id);
   }
 }

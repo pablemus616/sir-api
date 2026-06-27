@@ -24,11 +24,12 @@ describe('UsersService', () => {
   });
 
   it('hashes the password on create', async () => {
-    userRepo.findOne.mockResolvedValue(null);
-    await service.create({ username: 'a', password: 'pw', employeeId: 9 });
+    userRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 1, username: 'a', employeeId: 9, roles: [] });
+    const result = await service.create({ username: 'a', password: 'pw', employeeId: 9 });
     const saved = userRepo.save.mock.calls[0][0];
     expect(saved.password).not.toBe('pw');
     await expect(bcrypt.compare('pw', saved.password)).resolves.toBe(true);
+    expect(result.password).toBeUndefined();
   });
 
   it('rejects a duplicate username', async () => {
@@ -37,7 +38,7 @@ describe('UsersService', () => {
   });
 
   it('adds a role without duplicating it', async () => {
-    userRepo.findOne.mockResolvedValue({ id: 1, roles: [{ id: 2 }] });
+    userRepo.findOne.mockResolvedValueOnce({ id: 1, roles: [{ id: 2 }] }).mockResolvedValueOnce({ id: 1, username: 'u', employeeId: 1, roles: [{ id: 2 }, { id: 3 }] });
     roleRepo.findOne.mockResolvedValue({ id: 3 });
     const out = await service.addRole(1, { roleId: 3 });
     expect(out.roles.map((r: Role) => r.id)).toEqual([2, 3]);
