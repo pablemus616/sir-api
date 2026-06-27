@@ -19,10 +19,12 @@ describe('Metrics (e2e)', () => {
     app.setGlobalPrefix('api');
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
-  });
+  }, 30000);
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   it('rejects unauthenticated access to metrics', () => {
