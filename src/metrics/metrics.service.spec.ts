@@ -154,4 +154,46 @@ describe('MetricsService', () => {
       ]);
     });
   });
+
+  describe('contacts', () => {
+    it('aggregates call metrics by employee, type and direction', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        {
+          employeeId: '2',
+          contactTypeId: '1',
+          contactTypeName: 'call',
+          direction: 'outbound',
+          count: '3',
+          totalCallLength: '450',
+          avgCallLength: '150.0000',
+        },
+        {
+          employeeId: '2',
+          contactTypeId: '2',
+          contactTypeName: 'email',
+          direction: 'inbound',
+          count: '1',
+          totalCallLength: null,
+          avgCallLength: null,
+        },
+      ]);
+      contactHistoryRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.contacts({ clientId: 9 });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('cc.clientId = :clientId', { clientId: 9 });
+      expect(res[0]).toEqual({
+        employeeId: 2,
+        contactTypeId: 1,
+        contactTypeName: 'call',
+        direction: 'outbound',
+        count: 3,
+        totalCallLength: 450,
+        avgCallLength: 150,
+      });
+      expect(res[1].totalCallLength).toBe(0);
+      expect(res[1].avgCallLength).toBe(0);
+    });
+  });
 });

@@ -168,4 +168,36 @@ export class MetricsService {
       amount: Number(r.amount) || 0,
     }));
   }
+
+  async contacts(filter: MetricsFilterDto) {
+    const qb = this.contactHistoryRepo
+      .createQueryBuilder('ch')
+      .leftJoin('ch.contactType', 'ct')
+      .leftJoin('ch.contact', 'cc')
+      .select('ch.employeeId', 'employeeId')
+      .addSelect('ct.id', 'contactTypeId')
+      .addSelect('ct.name', 'contactTypeName')
+      .addSelect('ch.direction', 'direction')
+      .addSelect('COUNT(ch.id)', 'count')
+      .addSelect('SUM(ch.callLength)', 'totalCallLength')
+      .addSelect('AVG(ch.callLength)', 'avgCallLength')
+      .groupBy('ch.employeeId')
+      .addGroupBy('ct.id')
+      .addGroupBy('ct.name')
+      .addGroupBy('ch.direction');
+    if (filter.clientId) {
+      qb.andWhere('cc.clientId = :clientId', { clientId: filter.clientId });
+    }
+    this.applyDateRange(qb, filter, 'ch.contactTime');
+    const rows = await qb.getRawMany();
+    return rows.map((r) => ({
+      employeeId: Number(r.employeeId),
+      contactTypeId: r.contactTypeId === null ? null : Number(r.contactTypeId),
+      contactTypeName: r.contactTypeName,
+      direction: r.direction,
+      count: Number(r.count) || 0,
+      totalCallLength: Number(r.totalCallLength) || 0,
+      avgCallLength: r.avgCallLength === null ? 0 : Number(r.avgCallLength),
+    }));
+  }
 }
