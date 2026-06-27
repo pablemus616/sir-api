@@ -34,13 +34,16 @@ describe('OpportunitiesService', () => {
   });
 
   describe('create', () => {
-    it('persists a new opportunity', async () => {
+    it('persists a new opportunity and sets probability from stage', async () => {
       const dto: any = { clientId: 1, responsibleEmployeeId: 2, pipelineStageId: 3 };
-      const entity = { id: 10, ...dto };
+      const stage = { id: 3, probability: 40 };
+      const entity = { id: 10, ...dto, probability: 40 };
+      pipelineStageRepo.findOne!.mockResolvedValue(stage);
       opportunityRepo.create!.mockReturnValue(entity);
       opportunityRepo.save!.mockResolvedValue(entity);
+      opportunityRepo.findOne!.mockResolvedValue(entity);
       const result = await service.create(dto);
-      expect(opportunityRepo.create).toHaveBeenCalledWith(dto);
+      expect(opportunityRepo.create).toHaveBeenCalledWith(expect.objectContaining({ probability: 40 }));
       expect(result).toEqual(entity);
     });
   });

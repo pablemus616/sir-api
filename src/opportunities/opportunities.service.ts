@@ -17,8 +17,11 @@ export class OpportunitiesService {
   ) {}
 
   async create(dto: CreateOpportunityDto): Promise<Opportunity> {
-    const opportunity = this.opportunityRepository.create(dto);
-    return this.opportunityRepository.save(opportunity);
+    const stage = await this.pipelineStageRepository.findOne({ where: { id: dto.pipelineStageId } });
+    if (!stage) throw new NotFoundException('Pipeline stage not found');
+    const opportunity = this.opportunityRepository.create({ ...dto, probability: stage.probability });
+    const saved = await this.opportunityRepository.save(opportunity);
+    return this.findOne(saved.id);
   }
 
   async findAll(query: QueryOpportunityDto) {
@@ -62,10 +65,11 @@ export class OpportunitiesService {
   }
 
   async findOne(id: number): Promise<Opportunity> {
-    const opportunity = await this.opportunityRepository.findOne({ where: { id } });
-    if (!opportunity) {
-      throw new NotFoundException('Opportunity not found');
-    }
+    const opportunity = await this.opportunityRepository.findOne({
+      where: { id },
+      relations: { client: true, area: true, responsibleEmployee: true, clientContact: true, pipelineStage: true },
+    });
+    if (!opportunity) throw new NotFoundException('Opportunity not found');
     return opportunity;
   }
 
