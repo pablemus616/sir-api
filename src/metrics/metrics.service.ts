@@ -277,4 +277,67 @@ export class MetricsService {
         r.avgTimeToFillSeconds === null ? 0 : Number(r.avgTimeToFillSeconds),
     }));
   }
+
+  private mapChartRows(rows: any[], idKey: string, nameKey: string) {
+    return rows.map((r) => ({
+      [idKey]: r[idKey] === null ? null : Number(r[idKey]),
+      [nameKey]: r[nameKey],
+      opportunities: Number(r.opportunities) || 0,
+      won: Number(r.won) || 0,
+      amount: Number(r.amount) || 0,
+    }));
+  }
+
+  async chartByClient(filter: MetricsFilterDto) {
+    const qb = this.opportunityRepo
+      .createQueryBuilder('o')
+      .leftJoin('o.client', 'c')
+      .select('o.clientId', 'clientId')
+      .addSelect('c.name', 'clientName')
+      .addSelect('COUNT(o.id)', 'opportunities')
+      .addSelect(`SUM(CASE WHEN o.status = 'won' THEN 1 ELSE 0 END)`, 'won')
+      .addSelect(`SUM(CASE WHEN o.status = 'won' THEN o.amount ELSE 0 END)`, 'amount')
+      .groupBy('o.clientId')
+      .addGroupBy('c.name');
+    this.applyOpportunityScope(qb, filter);
+    this.applyDateRange(qb, filter, 'o.createdAt');
+    const rows = await qb.getRawMany();
+    return this.mapChartRows(rows, 'clientId', 'clientName');
+  }
+
+  async chartBySector(filter: MetricsFilterDto) {
+    const qb = this.opportunityRepo
+      .createQueryBuilder('o')
+      .leftJoin('o.client', 'c')
+      .leftJoin('c.sectorCatalog', 's')
+      .select('s.id', 'sectorId')
+      .addSelect('s.name', 'sectorName')
+      .addSelect('COUNT(o.id)', 'opportunities')
+      .addSelect(`SUM(CASE WHEN o.status = 'won' THEN 1 ELSE 0 END)`, 'won')
+      .addSelect(`SUM(CASE WHEN o.status = 'won' THEN o.amount ELSE 0 END)`, 'amount')
+      .groupBy('s.id')
+      .addGroupBy('s.name');
+    this.applyOpportunityScope(qb, filter);
+    this.applyDateRange(qb, filter, 'o.createdAt');
+    const rows = await qb.getRawMany();
+    return this.mapChartRows(rows, 'sectorId', 'sectorName');
+  }
+
+  async chartByArea(filter: MetricsFilterDto) {
+    const qb = this.opportunityRepo
+      .createQueryBuilder('o')
+      .leftJoin('o.client', 'c')
+      .leftJoin('o.area', 'a')
+      .select('a.id', 'areaId')
+      .addSelect('a.name', 'areaName')
+      .addSelect('COUNT(o.id)', 'opportunities')
+      .addSelect(`SUM(CASE WHEN o.status = 'won' THEN 1 ELSE 0 END)`, 'won')
+      .addSelect(`SUM(CASE WHEN o.status = 'won' THEN o.amount ELSE 0 END)`, 'amount')
+      .groupBy('a.id')
+      .addGroupBy('a.name');
+    this.applyOpportunityScope(qb, filter);
+    this.applyDateRange(qb, filter, 'o.createdAt');
+    const rows = await qb.getRawMany();
+    return this.mapChartRows(rows, 'areaId', 'areaName');
+  }
 }

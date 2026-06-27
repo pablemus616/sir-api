@@ -291,4 +291,62 @@ describe('MetricsService', () => {
       expect(qb.andWhere).toHaveBeenCalledWith('p.placedByEmployeeId = :recruiterId', { recruiterId: 4 });
     });
   });
+
+  describe('charts', () => {
+    it('chartByClient maps grouped totals', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        { clientId: '3', clientName: 'Acme', opportunities: '6', won: '2', amount: '40000.00' },
+        { clientId: '7', clientName: 'Globex', opportunities: '1', won: '0', amount: null },
+      ]);
+      opportunityRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.chartByClient({});
+
+      expect(res[0]).toEqual({
+        clientId: 3,
+        clientName: 'Acme',
+        opportunities: 6,
+        won: 2,
+        amount: 40000,
+      });
+      expect(res[1].amount).toBe(0);
+    });
+
+    it('chartBySector maps grouped totals with sector keys', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        { sectorId: '1', sectorName: 'BPO', opportunities: '4', won: '1', amount: '15000.00' },
+      ]);
+      opportunityRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.chartBySector({ from: '2026-01-01' });
+
+      expect(res[0]).toEqual({
+        sectorId: 1,
+        sectorName: 'BPO',
+        opportunities: 4,
+        won: 1,
+        amount: 15000,
+      });
+    });
+
+    it('chartByArea maps grouped totals with area keys', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        { areaId: '2', areaName: 'IT', opportunities: '3', won: '3', amount: '90000.00' },
+      ]);
+      opportunityRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.chartByArea({});
+
+      expect(res[0]).toEqual({
+        areaId: 2,
+        areaName: 'IT',
+        opportunities: 3,
+        won: 3,
+        amount: 90000,
+      });
+    });
+  });
 });
