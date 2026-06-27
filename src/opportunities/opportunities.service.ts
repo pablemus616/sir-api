@@ -105,7 +105,8 @@ export class OpportunitiesService {
         opportunity.lostReason = dto.lostReason;
       }
     }
-    return this.opportunityRepository.save(opportunity);
+    await this.opportunityRepository.save(opportunity);
+    return this.findOne(id);
   }
 
   async remove(id: number): Promise<void> {

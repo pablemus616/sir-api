@@ -73,7 +73,10 @@ describe('OpportunitiesService', () => {
   describe('changeStage', () => {
     beforeEach(() => {
       opportunityRepo.findOne!.mockResolvedValue({ id: 1, status: 'open' });
-      opportunityRepo.save!.mockImplementation(async (o: any) => o);
+      opportunityRepo.save!.mockImplementation(async (o: any) => {
+        opportunityRepo.findOne!.mockResolvedValue(o);
+        return o;
+      });
     });
 
     it('takes the probability from the stage when no override is given', async () => {
@@ -126,6 +129,14 @@ describe('OpportunitiesService', () => {
       await expect(service.changeStage(1, { pipelineStageId: 99 })).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('treats probability 0 as an explicit override, not falsy', async () => {
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 5, probability: 40, active: true, isWon: false, isLost: false,
+      });
+      const result = await service.changeStage(1, { pipelineStageId: 5, probability: 0 });
+      expect(result.probability).toBe(0);
     });
   });
 });
