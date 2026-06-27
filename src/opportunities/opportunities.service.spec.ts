@@ -187,4 +187,63 @@ describe('OpportunitiesService', () => {
       await expect(service.lose(1, { lostReason: 'budget' })).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('sendProposal', () => {
+    it('stamps proposalSentAt when null and stores the amount', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1, proposalSentAt: null });
+      opportunityRepo.save!.mockImplementation(async (o: any) => {
+        opportunityRepo.findOne!.mockResolvedValue(o);
+        return o;
+      });
+      const result = await service.sendProposal(1, { amount: 12000 });
+      expect(result.proposalSentAt).toBeInstanceOf(Date);
+      expect(result.amount).toBe(12000);
+    });
+
+    it('keeps the original proposalSentAt when already set', async () => {
+      const existing = new Date('2026-01-01T00:00:00.000Z');
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1, proposalSentAt: existing });
+      opportunityRepo.save!.mockImplementation(async (o: any) => {
+        opportunityRepo.findOne!.mockResolvedValue(o);
+        return o;
+      });
+      const result = await service.sendProposal(1, { amount: 9000 });
+      expect(result.proposalSentAt).toBe(existing);
+      expect(result.amount).toBe(9000);
+    });
+
+    it('leaves amount unchanged when dto.amount is not provided', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1, proposalSentAt: null, amount: 5000 });
+      opportunityRepo.save!.mockImplementation(async (o: any) => {
+        opportunityRepo.findOne!.mockResolvedValue(o);
+        return o;
+      });
+      const result = await service.sendProposal(1, {});
+      expect(result.amount).toBe(5000);
+    });
+
+    it('throws NotFoundException when opportunity does not exist', async () => {
+      opportunityRepo.findOne!.mockResolvedValue(null);
+      await expect(service.sendProposal(1, {})).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('setFollowUp', () => {
+    it('stores the next follow up date', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1 });
+      opportunityRepo.save!.mockImplementation(async (o: any) => {
+        opportunityRepo.findOne!.mockResolvedValue(o);
+        return o;
+      });
+      const next = new Date('2026-07-01T00:00:00.000Z');
+      const result = await service.setFollowUp(1, { nextFollowUpAt: next });
+      expect(result.nextFollowUpAt).toBe(next);
+    });
+
+    it('throws NotFoundException when opportunity does not exist', async () => {
+      opportunityRepo.findOne!.mockResolvedValue(null);
+      const next = new Date('2026-07-01T00:00:00.000Z');
+      await expect(service.setFollowUp(1, { nextFollowUpAt: next })).rejects.toThrow(NotFoundException);
+    });
+  });
 });

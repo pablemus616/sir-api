@@ -8,6 +8,8 @@ import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
 import { QueryOpportunityDto } from './dto/query-opportunity.dto';
 import { ChangeStageDto } from './dto/change-stage.dto';
 import { LoseOpportunityDto } from './dto/lose-opportunity.dto';
+import { SendProposalDto } from './dto/send-proposal.dto';
+import { FollowUpDto } from './dto/follow-up.dto';
 import { OpportunityStatus } from '../config/enums';
 
 @Injectable()
@@ -133,6 +135,25 @@ export class OpportunitiesService {
     }
     opportunity.pipelineStageId = stage.id;
     opportunity.probability = stage.probability;
+    await this.opportunityRepository.save(opportunity);
+    return this.findOne(id);
+  }
+
+  async sendProposal(id: number, dto: SendProposalDto): Promise<Opportunity> {
+    const opportunity = await this.findOne(id);
+    if (opportunity.proposalSentAt == null) {
+      opportunity.proposalSentAt = new Date();
+    }
+    if (dto.amount !== undefined) {
+      opportunity.amount = dto.amount;
+    }
+    await this.opportunityRepository.save(opportunity);
+    return this.findOne(id);
+  }
+
+  async setFollowUp(id: number, dto: FollowUpDto): Promise<Opportunity> {
+    const opportunity = await this.findOne(id);
+    opportunity.nextFollowUpAt = dto.nextFollowUpAt;
     await this.opportunityRepository.save(opportunity);
     return this.findOne(id);
   }
