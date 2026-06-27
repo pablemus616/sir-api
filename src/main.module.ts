@@ -13,6 +13,7 @@ import { CatalogsModule } from './catalogs/catalogs.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
+import { ClientsModule } from './clients/clients.module';
 import { SnakeNamingStrategy } from './config/snake-naming.strategy';
 import { JwtTokenService } from './config/jwt.service';
 import { JwtAuthGuard } from './config/jwt-auth.guard';
@@ -45,6 +46,7 @@ import { RolesGuard } from './config/roles.guard';
     ContactTypesModule,
     PipelineStagesModule,
     EmployeesModule,
+    ClientsModule,
     CatalogsModule,
     PermissionsModule,
     RolesModule,
