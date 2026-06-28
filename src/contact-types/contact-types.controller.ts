@@ -16,11 +16,11 @@ import { PaginationDto } from '../config/pagination.dto';
 import { Roles } from '../config/roles.decorator';
 
 @Controller('contact-types')
-@Roles('admin')
 export class ContactTypesController {
   constructor(private readonly service: ContactTypesService) {}
 
   @Post()
+  @Roles('admin')
   create(@Body() dto: CreateContactTypeDto) {
     return this.service.create(dto);
   }
@@ -36,6 +36,7 @@ export class ContactTypesController {
   }
 
   @Patch(':id')
+  @Roles('admin')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateContactTypeDto,
@@ -44,6 +45,7 @@ export class ContactTypesController {
   }
 
   @Delete(':id')
+  @Roles('admin')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }

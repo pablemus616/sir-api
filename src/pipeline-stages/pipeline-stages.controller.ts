@@ -16,11 +16,11 @@ import { QueryPipelineStageDto } from './dto/query-pipeline-stage.dto';
 import { Roles } from '../config/roles.decorator';
 
 @Controller('pipeline-stages')
-@Roles('admin')
 export class PipelineStagesController {
   constructor(private readonly service: PipelineStagesService) {}
 
   @Post()
+  @Roles('admin')
   create(@Body() dto: CreatePipelineStageDto) {
     return this.service.create(dto);
   }
@@ -36,6 +36,7 @@ export class PipelineStagesController {
   }
 
   @Patch(':id')
+  @Roles('admin')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePipelineStageDto,
@@ -44,6 +45,7 @@ export class PipelineStagesController {
   }
 
   @Delete(':id')
+  @Roles('admin')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }

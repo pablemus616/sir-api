@@ -16,11 +16,11 @@ import { PaginationDto } from '../config/pagination.dto';
 import { Roles } from '../config/roles.decorator';
 
 @Controller('position-areas')
-@Roles('admin')
 export class PositionAreasController {
   constructor(private readonly service: PositionAreasService) {}
 
   @Post()
+  @Roles('admin')
   create(@Body() dto: CreatePositionAreaDto) {
     return this.service.create(dto);
   }
@@ -36,6 +36,7 @@ export class PositionAreasController {
   }
 
   @Patch(':id')
+  @Roles('admin')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePositionAreaDto,
@@ -44,6 +45,7 @@ export class PositionAreasController {
   }
 
   @Delete(':id')
+  @Roles('admin')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }

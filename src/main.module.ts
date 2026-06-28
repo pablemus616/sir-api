@@ -28,7 +28,9 @@ import { RolesGuard } from './config/roles.guard';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 20 }]),
+    // 20/min era demasiado bajo para una SPA (cada carga dispara muchas queries
+    // de catálogos/charts) -> 429 en uso normal. 300/min da margen holgado.
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 300 }]),
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
