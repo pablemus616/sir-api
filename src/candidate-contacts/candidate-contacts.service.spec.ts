@@ -6,12 +6,14 @@ import { CandidateContactsService } from './candidate-contacts.service';
 import { CandidateContact } from './candidate-contact.entity';
 import { Candidate } from '../candidates/candidate.entity';
 import { Opportunity } from '../opportunities/opportunity.entity';
+import { ContactType } from '../contact-types/contact-type.entity';
 
 describe('CandidateContactsService', () => {
   let service: CandidateContactsService;
   let repo: any;
   let candidateRepo: any;
   let opportunityRepo: any;
+  let contactTypeRepo: any;
 
   beforeEach(async () => {
     repo = {
@@ -22,6 +24,7 @@ describe('CandidateContactsService', () => {
     };
     candidateRepo = { findOne: jest.fn(async () => ({ id: 1 })) };
     opportunityRepo = { findOne: jest.fn(async () => ({ id: 2, lastContactAt: null })), save: jest.fn(async (x) => x) };
+    contactTypeRepo = { findOne: jest.fn(async () => ({ id: 3 })) };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -29,6 +32,7 @@ describe('CandidateContactsService', () => {
         { provide: getRepositoryToken(CandidateContact), useValue: repo },
         { provide: getRepositoryToken(Candidate), useValue: candidateRepo },
         { provide: getRepositoryToken(Opportunity), useValue: opportunityRepo },
+        { provide: getRepositoryToken(ContactType), useValue: contactTypeRepo },
       ],
     }).compile();
     service = moduleRef.get(CandidateContactsService);
@@ -57,6 +61,13 @@ describe('CandidateContactsService', () => {
     opportunityRepo.findOne.mockResolvedValueOnce(null);
     await expect(
       service.create({ candidateId: 1, opportunityId: 2, contactType: 3, contactTime: '2026-06-28T10:00:00.000Z' } as any, 7),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('create() lanza 404 si el contactType no existe', async () => {
+    contactTypeRepo.findOne.mockResolvedValueOnce(null);
+    await expect(
+      service.create({ candidateId: 1, opportunityId: 2, contactType: 999, contactTime: '2026-06-28T10:00:00.000Z' } as any, 7),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

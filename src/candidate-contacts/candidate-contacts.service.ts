@@ -18,6 +18,8 @@ export class CandidateContactsService {
     private readonly candidateRepo: Repository<Candidate>,
     @InjectRepository(Opportunity)
     private readonly opportunityRepo: Repository<Opportunity>,
+    @InjectRepository(ContactType)
+    private readonly contactTypeRepo: Repository<ContactType>,
   ) {}
 
   async create(
@@ -31,6 +33,10 @@ export class CandidateContactsService {
     const opportunity = await this.opportunityRepo.findOne({ where: { id: dto.opportunityId } });
     if (!opportunity) {
       throw new NotFoundException('Opportunity not found');
+    }
+    const contactType = await this.contactTypeRepo.findOne({ where: { id: dto.contactType } });
+    if (!contactType) {
+      throw new NotFoundException('Contact type not found');
     }
     const contactTime = new Date(dto.contactTime);
     if (!opportunity.lastContactAt || contactTime > opportunity.lastContactAt) {
