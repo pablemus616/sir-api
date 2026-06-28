@@ -82,9 +82,11 @@ export class OpportunitiesService {
   }
 
   async update(id: number, dto: UpdateOpportunityDto): Promise<Opportunity> {
-    const opportunity = await this.findOne(id);
-    Object.assign(opportunity, dto);
-    return this.opportunityRepository.save(opportunity);
+    await this.findOne(id); // 404 si no existe
+    // update() escribe columnas directamente: evita que las relaciones cargadas
+    // (client/area/pipelineStage…) reviertan los FK escalares al hacer save().
+    await this.opportunityRepository.update(id, dto);
+    return this.findOne(id);
   }
 
   async changeStage(id: number, dto: ChangeStageDto): Promise<Opportunity> {
@@ -98,7 +100,11 @@ export class OpportunitiesService {
     if (!stage.active) {
       throw new BadRequestException('Pipeline stage is not active');
     }
+    // Setear la RELACIÓN además del FK escalar: findOne carga `pipelineStage`,
+    // y al guardar TypeORM da prioridad a la relación cargada (stage anterior),
+    // revirtiendo el cambio si solo se actualiza el escalar.
     opportunity.pipelineStageId = stage.id;
+    opportunity.pipelineStage = stage;
     opportunity.probability = dto.probability ?? stage.probability;
     if (stage.isWon) {
       opportunity.status = OpportunityStatus.WON;
