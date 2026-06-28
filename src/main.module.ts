@@ -17,6 +17,7 @@ import { UsersModule } from './users/users.module';
 import { ClientsModule } from './clients/clients.module';
 import { ClientContactsModule } from './client-contacts/client-contacts.module';
 import { ContactHistoryModule } from './contact-history/contact-history.module';
+import { CandidateContactsModule } from './candidate-contacts/candidate-contacts.module';
 import { ContactRequestsModule } from './contact-requests/contact-requests.module';
 import { CandidatesModule } from './candidates/candidates.module';
 import { ApplicationsModule } from './applications/applications.module';
@@ -58,6 +59,7 @@ import { RolesGuard } from './config/roles.guard';
     ClientsModule,
     ClientContactsModule,
     ContactHistoryModule,
+    CandidateContactsModule,
     ContactRequestsModule,
     PermissionsModule,
     RolesModule,
