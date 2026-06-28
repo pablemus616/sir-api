@@ -32,13 +32,16 @@ export class OpportunitiesService {
   async findAll(query: QueryOpportunityDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const qb = this.opportunityRepository.createQueryBuilder('opportunity');
+    const qb = this.opportunityRepository
+      .createQueryBuilder('opportunity')
+      .leftJoinAndSelect('opportunity.client', 'client')
+      .leftJoinAndSelect('opportunity.area', 'area')
+      .leftJoinAndSelect('opportunity.pipelineStage', 'pipelineStage')
+      .leftJoinAndSelect('opportunity.responsibleEmployee', 'responsibleEmployee');
 
     if (query.sectorId !== undefined) {
-      qb.leftJoin('opportunity.client', 'client').andWhere(
-        'client.sectorId = :sectorId',
-        { sectorId: query.sectorId },
-      );
+      // 'client' ya está unido arriba; solo filtramos por su sectorId.
+      qb.andWhere('client.sectorId = :sectorId', { sectorId: query.sectorId });
     }
     if (query.clientId !== undefined) {
       qb.andWhere('opportunity.clientId = :clientId', { clientId: query.clientId });
