@@ -53,6 +53,7 @@ describe('OpportunitiesService', () => {
     it('applies the followUpDue filter and returns the paginated shape', async () => {
       const qb: any = {
         leftJoin: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),

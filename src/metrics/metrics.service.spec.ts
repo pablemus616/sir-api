@@ -114,17 +114,22 @@ describe('MetricsService', () => {
   describe('overview', () => {
     it('aggregates snapshot counts and pipeline value', async () => {
       clientRepo.count.mockResolvedValue(7);
-      opportunityRepo.count.mockResolvedValue(5);
       candidateRepo.count.mockResolvedValue(9);
       contactRequestRepo.count.mockResolvedValue(2);
+
+      // openOpportunities y pipelineValue ahora salen de sendos query builders
+      // de opportunityRepo (1º getCount, 2º getRawOne); placements de placementRepo.
+      const openOppQb = createQbMock();
+      openOppQb.getCount.mockResolvedValue(5);
+      const pipelineQb = createQbMock();
+      pipelineQb.getRawOne.mockResolvedValue({ pipelineValue: '85000.00' });
+      opportunityRepo.createQueryBuilder
+        .mockReturnValueOnce(openOppQb)
+        .mockReturnValueOnce(pipelineQb);
 
       const placementsQb = createQbMock();
       placementsQb.getCount.mockResolvedValue(3);
       placementRepo.createQueryBuilder.mockReturnValue(placementsQb);
-
-      const pipelineQb = createQbMock();
-      pipelineQb.getRawOne.mockResolvedValue({ pipelineValue: '85000.00' });
-      opportunityRepo.createQueryBuilder.mockReturnValue(pipelineQb);
 
       const res = await service.overview();
 
