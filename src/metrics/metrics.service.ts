@@ -112,27 +112,40 @@ export class MetricsService {
     };
   }
 
-  async overview() {
+  async overview(scopeEmployeeId?: number) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const [clients, openOpportunities, activeCandidates, pendingRequests] =
-      await Promise.all([
-        this.clientRepo.count(),
-        this.opportunityRepo.count({ where: { status: 'open' } as any }),
-        this.candidateRepo.count({ where: { status: 'active' } as any }),
-        this.contactRequestRepo.count({ where: { wasHandled: false } }),
-      ]);
-    const placementsThisMonth = await this.placementRepo
+    // clients/activeCandidates/pendingRequests son totales de contexto (org).
+    const [clients, activeCandidates, pendingRequests] = await Promise.all([
+      this.clientRepo.count(),
+      this.candidateRepo.count({ where: { status: 'active' } as any }),
+      this.contactRequestRepo.count({ where: { wasHandled: false } }),
+    ]);
+    // openOpportunities / pipelineValue: scopeados al empleado cuando aplica.
+    const openOppQb = this.opportunityRepo
+      .createQueryBuilder('o')
+      .where(`o.status = 'open'`);
+    if (scopeEmployeeId) {
+      openOppQb.andWhere('o.responsibleEmployeeId = :scopeEmployeeId', { scopeEmployeeId });
+    }
+    const openOpportunities = await openOppQb.getCount();
+    const placementsQb = this.placementRepo
       .createQueryBuilder('p')
       .where('p.placementDate >= :monthStart', { monthStart })
-      .andWhere('p.placementDate < :monthEnd', { monthEnd })
-      .getCount();
-    const pipelineRaw = await this.opportunityRepo
+      .andWhere('p.placementDate < :monthEnd', { monthEnd });
+    if (scopeEmployeeId) {
+      placementsQb.andWhere('p.placedByEmployeeId = :scopeEmployeeId', { scopeEmployeeId });
+    }
+    const placementsThisMonth = await placementsQb.getCount();
+    const pipelineQb = this.opportunityRepo
       .createQueryBuilder('o')
       .select('SUM(o.amount)', 'pipelineValue')
-      .where(`o.status = 'open'`)
-      .getRawOne();
+      .where(`o.status = 'open'`);
+    if (scopeEmployeeId) {
+      pipelineQb.andWhere('o.responsibleEmployeeId = :scopeEmployeeId', { scopeEmployeeId });
+    }
+    const pipelineRaw = await pipelineQb.getRawOne();
     return {
       clients,
       openOpportunities,
@@ -187,6 +200,12 @@ export class MetricsService {
       .addGroupBy('ch.direction');
     if (filter.clientId) {
       qb.andWhere('cc.clientId = :clientId', { clientId: filter.clientId });
+    }
+    // Scope por empleado (no-admin): solo sus propios contactos registrados.
+    if (filter.responsibleEmployeeId) {
+      qb.andWhere('ch.employeeId = :scopeEmployeeId', {
+        scopeEmployeeId: filter.responsibleEmployeeId,
+      });
     }
     this.applyDateRange(qb, filter, 'ch.contactTime');
     const rows = await qb.getRawMany();
