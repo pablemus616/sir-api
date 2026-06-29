@@ -1,5 +1,14 @@
 // src/candidate-contacts/candidate-contacts.controller.ts
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { CandidateContactsService } from './candidate-contacts.service';
 import { CreateCandidateContactDto } from './dto/create-candidate-contact.dto';
 import { QueryCandidateContactsDto } from './dto/query-candidate-contacts.dto';
@@ -14,13 +23,22 @@ export class CandidateContactsController {
     return this.service.create(dto, user.employeeId);
   }
 
+  // Admin ve todas las interacciones; el reclutador no-admin solo las suyas
+  // (se fuerza el filtro recruiterId al employeeId del token).
   @Get()
-  findAll(@Query() query: QueryCandidateContactsDto) {
+  findAll(@Query() query: QueryCandidateContactsDto, @CurrentUser() user: AuthUser) {
+    if (!user.roles.includes('admin')) {
+      query.recruiterId = user.employeeId;
+    }
     return this.service.findAll(query);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+    const contact = await this.service.findOne(id);
+    if (!user.roles.includes('admin') && contact.recruiterEmployeeId !== user.employeeId) {
+      throw new ForbiddenException('No autorizado');
+    }
+    return contact;
   }
 }
