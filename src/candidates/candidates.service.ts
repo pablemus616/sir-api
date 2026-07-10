@@ -5,6 +5,7 @@ import { Candidate } from './candidate.entity';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
 import { SearchCandidatesDto } from './dto/search-candidates.dto';
+import { ApplicationStage } from '../config/enums';
 
 @Injectable()
 export class CandidatesService {
@@ -24,7 +25,8 @@ export class CandidatesService {
     page: number;
     limit: number;
   }> {
-    const { page = 1, limit = 20, name, email, status, source } = query;
+    const { page = 1, limit = 20, name, email, status, source, available } =
+      query;
     const qb = this.candidatesRepository.createQueryBuilder('candidate');
     if (name) {
       qb.andWhere(
@@ -35,6 +37,18 @@ export class CandidatesService {
     if (email) qb.andWhere('candidate.email ILIKE :email', { email: `%${email}%` });
     if (status) qb.andWhere('candidate.status = :status', { status });
     if (source) qb.andWhere('candidate.source = :source', { source });
+    if (available) {
+      // Excluye candidatos con cualquier aplicación que no sea 'withdrawn':
+      // proceso activo, contratado (placement) o rechazado.
+      qb.andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM applications app
+          WHERE app.candidate_id = candidate.id
+            AND app.stage::text <> :withdrawnStage
+        )`,
+        { withdrawnStage: ApplicationStage.WITHDRAWN },
+      );
+    }
     qb.orderBy('candidate.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);

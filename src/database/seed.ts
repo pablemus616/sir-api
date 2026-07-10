@@ -9,6 +9,8 @@ import { ContactType } from '../contact-types/contact-type.entity';
 import { Sector } from '../sectors/sector.entity';
 import { PositionArea } from '../position-areas/position-area.entity';
 import { PipelineStage } from '../pipeline-stages/pipeline-stage.entity';
+import { Permission } from '../roles/permission.entity';
+import { allPermissionNames } from '../config/permissions.catalog';
 
 async function ensureNamed<T extends { name: string }>(
   ds: DataSource,
@@ -24,6 +26,65 @@ async function ensureNamed<T extends { name: string }>(
 
 async function seedRoles(ds: DataSource): Promise<void> {
   await ensureNamed(ds, Role, ['admin', 'recruiter', 'agent']);
+}
+
+async function seedPermissions(ds: DataSource): Promise<void> {
+  const repo = ds.getRepository(Permission);
+  for (const name of allPermissionNames()) {
+    const found = await repo.findOne({ where: { name } });
+    if (!found) await repo.save(repo.create({ name }));
+  }
+}
+
+/** Sensible default grants per non-admin role (admin gets everything). */
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  recruiter: [
+    'dashboard:read',
+    'clients:read',
+    'opportunities:read:own',
+    'candidates:read', 'candidates:create', 'candidates:update',
+    'applications:read', 'applications:create', 'applications:update',
+    'placements:read:own', 'placements:create', 'placements:update',
+    'candidate-contacts:read:own', 'candidate-contacts:create', 'candidate-contacts:update',
+    'sectors:read', 'position-areas:read', 'pipeline-stages:read', 'contact-types:read',
+  ],
+  agent: [
+    'dashboard:read',
+    'opportunities:read:own', 'opportunities:create', 'opportunities:update',
+    'clients:read', 'clients:create', 'clients:update',
+    'client-contacts:read', 'client-contacts:create', 'client-contacts:update',
+    'contact-requests:read', 'contact-requests:update',
+    'contact-history:read:own', 'contact-history:create',
+    'sectors:read', 'position-areas:read', 'pipeline-stages:read', 'contact-types:read',
+  ],
+};
+
+async function seedRolePermissions(ds: DataSource): Promise<void> {
+  const roleRepo = ds.getRepository(Role);
+  const permRepo = ds.getRepository(Permission);
+  const allPerms = await permRepo.find();
+  const byName = new Map(allPerms.map((p) => [p.name, p]));
+
+  // admin always holds every permission (kept in sync as the catalog grows).
+  const admin = await roleRepo.findOne({ where: { name: 'admin' }, relations: { permissions: true } });
+  if (admin) {
+    admin.permissions = allPerms;
+    await roleRepo.save(admin);
+  }
+
+  // non-admin roles: add missing defaults without clobbering manual board edits.
+  for (const [roleName, permNames] of Object.entries(ROLE_PERMISSIONS)) {
+    const role = await roleRepo.findOne({ where: { name: roleName }, relations: { permissions: true } });
+    if (!role) continue;
+    const existing = new Set((role.permissions ?? []).map((p) => p.name));
+    const toAdd = permNames
+      .map((n) => byName.get(n))
+      .filter((p): p is Permission => !!p && !existing.has(p.name));
+    if (toAdd.length) {
+      role.permissions = [...(role.permissions ?? []), ...toAdd];
+      await roleRepo.save(role);
+    }
+  }
 }
 
 async function seedContactTypes(ds: DataSource): Promise<void> {
@@ -80,6 +141,8 @@ async function run(): Promise<void> {
   const app = await NestFactory.createApplicationContext(MainModule);
   const ds = app.get(DataSource);
   await seedRoles(ds);
+  await seedPermissions(ds);
+  await seedRolePermissions(ds);
   await seedContactTypes(ds);
   await seedSectors(ds);
   await seedPositionAreas(ds);

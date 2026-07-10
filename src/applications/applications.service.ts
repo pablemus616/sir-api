@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { Application, ApplicationStage } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { ChangeApplicationStageDto } from './dto/change-application-stage.dto';
@@ -45,6 +45,20 @@ export class ApplicationsService {
   ) {}
 
   async create(dto: CreateApplicationDto): Promise<Application> {
+    // Un candidato solo puede estar en un proceso a la vez: si ya tiene una
+    // aplicación activa, contratada (placement) o rechazada, no puede iniciar
+    // otra. Las aplicaciones retiradas ('withdrawn') sí liberan al candidato.
+    const blocking = await this.applicationsRepository.findOne({
+      where: {
+        candidateId: dto.candidateId,
+        stage: Not(ApplicationStage.WITHDRAWN),
+      },
+    });
+    if (blocking) {
+      throw new ConflictException(
+        `Candidate ${dto.candidateId} already has an active, hired or rejected application`,
+      );
+    }
     const existing = await this.applicationsRepository.findOne({
       where: { candidateId: dto.candidateId, opportunityId: dto.opportunityId },
     });

@@ -35,6 +35,7 @@ describe('JwtAuthGuard', () => {
       sub: 1,
       employeeId: 7,
       roles: ['admin'],
+      permissions: ['clients:read'],
       sid: 'sid-1',
     });
     const req: Record<string, unknown> = {
@@ -45,6 +46,7 @@ describe('JwtAuthGuard', () => {
       userId: 1,
       employeeId: 7,
       roles: ['admin'],
+      permissions: ['clients:read'],
       sessionId: 'sid-1',
     });
   });

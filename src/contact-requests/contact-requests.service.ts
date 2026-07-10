@@ -25,6 +25,7 @@ export class ContactRequestsService {
     const limit = query.limit ?? 20;
     const [items, total] = await this.requestRepo.findAndCount({
       where: query.wasHandled === undefined ? {} : { wasHandled: query.wasHandled },
+      relations: { handledBy: true, resultingClient: true },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,

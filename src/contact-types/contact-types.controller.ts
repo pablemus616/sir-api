@@ -13,14 +13,15 @@ import { ContactTypesService } from './contact-types.service';
 import { CreateContactTypeDto } from './dto/create-contact-type.dto';
 import { UpdateContactTypeDto } from './dto/update-contact-type.dto';
 import { PaginationDto } from '../config/pagination.dto';
-import { Roles } from '../config/roles.decorator';
+import { RequirePermission } from '../config/permissions.decorator';
 
+// Reads open (feed dropdowns); writes require the explicit permission.
 @Controller('contact-types')
 export class ContactTypesController {
   constructor(private readonly service: ContactTypesService) {}
 
   @Post()
-  @Roles('admin')
+  @RequirePermission('contact-types', 'create')
   create(@Body() dto: CreateContactTypeDto) {
     return this.service.create(dto);
   }
@@ -36,7 +37,7 @@ export class ContactTypesController {
   }
 
   @Patch(':id')
-  @Roles('admin')
+  @RequirePermission('contact-types', 'update')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateContactTypeDto,
@@ -45,7 +46,7 @@ export class ContactTypesController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequirePermission('contact-types', 'delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }

@@ -7,6 +7,7 @@ export interface AccessPayload {
   sub: number;
   employeeId: number;
   roles: string[];
+  permissions: string[];
   sid: string;
 }
 
@@ -28,6 +29,7 @@ export class JwtTokenService {
       sub: decoded.sub as unknown as number,
       employeeId: decoded.employeeId as number,
       roles: decoded.roles as string[],
+      permissions: (decoded.permissions as string[]) ?? [],
       sid: decoded.sid as string,
     };
   }

@@ -5,6 +5,7 @@ export interface AuthUser {
   userId: number;
   employeeId: number;
   roles: string[];
+  permissions: string[];
   sessionId: string;
 }
 

@@ -60,6 +60,17 @@ describe('ApplicationsService', () => {
     expect(result).toEqual({ candidateId: 1, opportunityId: 2 });
   });
 
+  it('create throws ConflictException when candidate is already in a process', async () => {
+    // Primer findOne (guard de proceso) devuelve una aplicación activa.
+    repository.findOne.mockResolvedValueOnce({
+      id: 5,
+      stage: 'interview',
+    } as Application);
+    await expect(
+      service.create({ candidateId: 1, opportunityId: 99 } as any),
+    ).rejects.toThrow(ConflictException);
+  });
+
   it.each([
     ['applied', 'screening'],
     ['screening', 'interview'],

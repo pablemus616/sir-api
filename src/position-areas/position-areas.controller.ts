@@ -13,14 +13,15 @@ import { PositionAreasService } from './position-areas.service';
 import { CreatePositionAreaDto } from './dto/create-position-area.dto';
 import { UpdatePositionAreaDto } from './dto/update-position-area.dto';
 import { PaginationDto } from '../config/pagination.dto';
-import { Roles } from '../config/roles.decorator';
+import { RequirePermission } from '../config/permissions.decorator';
 
+// Reads open (feed dropdowns); writes require the explicit permission.
 @Controller('position-areas')
 export class PositionAreasController {
   constructor(private readonly service: PositionAreasService) {}
 
   @Post()
-  @Roles('admin')
+  @RequirePermission('position-areas', 'create')
   create(@Body() dto: CreatePositionAreaDto) {
     return this.service.create(dto);
   }
@@ -36,7 +37,7 @@ export class PositionAreasController {
   }
 
   @Patch(':id')
-  @Roles('admin')
+  @RequirePermission('position-areas', 'update')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePositionAreaDto,
@@ -45,7 +46,7 @@ export class PositionAreasController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequirePermission('position-areas', 'delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }

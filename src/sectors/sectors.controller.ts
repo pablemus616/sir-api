@@ -13,14 +13,16 @@ import { SectorsService } from './sectors.service';
 import { CreateSectorDto } from './dto/create-sector.dto';
 import { UpdateSectorDto } from './dto/update-sector.dto';
 import { PaginationDto } from '../config/pagination.dto';
-import { Roles } from '../config/roles.decorator';
+import { RequirePermission } from '../config/permissions.decorator';
 
+// Reads stay open to any authenticated user (sectors feed dropdowns everywhere);
+// writes require the explicit permission.
 @Controller('sectors')
 export class SectorsController {
   constructor(private readonly service: SectorsService) {}
 
   @Post()
-  @Roles('admin')
+  @RequirePermission('sectors', 'create')
   create(@Body() dto: CreateSectorDto) {
     return this.service.create(dto);
   }
@@ -36,7 +38,7 @@ export class SectorsController {
   }
 
   @Patch(':id')
-  @Roles('admin')
+  @RequirePermission('sectors', 'update')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSectorDto,
@@ -45,7 +47,7 @@ export class SectorsController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequirePermission('sectors', 'delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }

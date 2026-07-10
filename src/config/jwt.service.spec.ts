@@ -16,6 +16,7 @@ describe('JwtTokenService', () => {
     sub: 1,
     employeeId: 7,
     roles: ['admin'],
+    permissions: ['clients:read', 'clients:create'],
     sid: 'session-1',
   };
 
@@ -29,6 +30,7 @@ describe('JwtTokenService', () => {
     expect(decoded.sub).toBe(payload.sub);
     expect(decoded.employeeId).toBe(payload.employeeId);
     expect(decoded.roles).toEqual(payload.roles);
+    expect(decoded.permissions).toEqual(payload.permissions);
     expect(decoded.sid).toBe(payload.sid);
   });
 

@@ -45,7 +45,7 @@ describe('AuthService', () => {
     });
     const out = await service.login({ username: 'a', password: 'pw' }, '1.2.3.4');
     expect(out).toEqual({ accessToken: 'access-1', refreshToken: 'r-new' });
-    expect(jwtService.signAccessToken).toHaveBeenCalledWith({ sub: 1, employeeId: 9, roles: ['admin'], sid: 'sid-1' });
+    expect(jwtService.signAccessToken).toHaveBeenCalledWith({ sub: 1, employeeId: 9, roles: ['admin'], permissions: [], sid: 'sid-1' });
   });
 
   it('login rejects a bad password', async () => {
@@ -77,7 +77,7 @@ describe('AuthService', () => {
   });
 
   it('logout deletes the current session', async () => {
-    await service.logout({ userId: 1, employeeId: 9, roles: [], sessionId: 'sid-1' });
+    await service.logout({ userId: 1, employeeId: 9, roles: [], permissions: [], sessionId: 'sid-1' });
     expect(sessionRepo.delete).toHaveBeenCalledWith('sid-1');
   });
 });

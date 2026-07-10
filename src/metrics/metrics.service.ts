@@ -313,8 +313,16 @@ export class MetricsService {
       .createQueryBuilder('p')
       .leftJoin('p.opportunity', 'o')
       .leftJoin('o.client', 'c')
+      .leftJoin('p.placedBy', 'pe')
       .select('p.placedByEmployeeId', 'recruiterId')
+      // Nombre del reclutador resuelto en la consulta (no en el cliente): así la
+      // gráfica muestra el nombre real de cada reclutador, no "Reclutador #id".
+      .addSelect(
+        "NULLIF(TRIM(CONCAT(pe.first_name, ' ', pe.last_name)), '')",
+        'recruiterName',
+      )
       .addSelect('o.clientId', 'clientId')
+      .addSelect('c.name', 'clientName')
       .addSelect('COUNT(p.id)', 'count')
       .addSelect('SUM(p.fee)', 'totalFee')
       .addSelect(
@@ -322,7 +330,9 @@ export class MetricsService {
         'avgTimeToFillSeconds',
       )
       .groupBy('p.placedByEmployeeId')
-      .addGroupBy('o.clientId');
+      .addGroupBy('pe.id')
+      .addGroupBy('o.clientId')
+      .addGroupBy('c.name');
     this.applyOpportunityScope(qb, filter);
     this.applyDateRange(qb, filter, 'p.placementDate');
     if (filter.recruiterId) {
@@ -331,7 +341,9 @@ export class MetricsService {
     const rows = await qb.getRawMany();
     return rows.map((r) => ({
       recruiterId: Number(r.recruiterId) || 0,
+      recruiterName: r.recruiterName ?? null,
       clientId: Number(r.clientId),
+      clientName: r.clientName ?? null,
       count: Number(r.count) || 0,
       totalFee: Number(r.totalFee) || 0,
       avgTimeToFillSeconds:

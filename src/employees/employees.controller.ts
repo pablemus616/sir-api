@@ -13,7 +13,7 @@ import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { PaginationDto } from '../config/pagination.dto';
-import { Roles } from '../config/roles.decorator';
+import { RequirePermission } from '../config/permissions.decorator';
 import { CurrentUser, type AuthUser } from '../config/current-user.decorator';
 import { Employee } from './employee.entity';
 
@@ -37,7 +37,7 @@ export class EmployeesController {
   constructor(private readonly service: EmployeesService) {}
 
   @Post()
-  @Roles('admin')
+  @RequirePermission('employees', 'create')
   create(@Body() dto: CreateEmployeeDto) {
     return this.service.create(dto);
   }
@@ -59,7 +59,7 @@ export class EmployeesController {
   }
 
   @Patch(':id')
-  @Roles('admin')
+  @RequirePermission('employees', 'update')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateEmployeeDto,
@@ -68,7 +68,7 @@ export class EmployeesController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequirePermission('employees', 'delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }

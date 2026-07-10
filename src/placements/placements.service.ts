@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Placement } from './placement.entity';
@@ -27,6 +27,14 @@ export class PlacementsService {
     });
     if (!application) {
       throw new NotFoundException(`Application ${dto.applicationId} not found`);
+    }
+
+    // Una aplicación ya contratada ('hired') ya tiene placement: no se puede
+    // registrar otro para el mismo candidato/aplicación.
+    if (application.stage === ApplicationStage.HIRED) {
+      throw new ConflictException(
+        `Application ${dto.applicationId} already has a placement`,
+      );
     }
 
     application.stage = ApplicationStage.HIRED;
@@ -74,7 +82,8 @@ export class PlacementsService {
     const qb = this.placementsRepository
       .createQueryBuilder('placement')
       .leftJoinAndSelect('placement.opportunity', 'opportunity')
-      .leftJoinAndSelect('placement.candidate', 'candidate');
+      .leftJoinAndSelect('placement.candidate', 'candidate')
+      .leftJoinAndSelect('placement.placedBy', 'placedBy');
     if (clientId) qb.andWhere('opportunity.clientId = :clientId', { clientId });
     if (recruiterId)
       qb.andWhere('placement.placedByEmployeeId = :recruiterId', { recruiterId });
@@ -91,7 +100,7 @@ export class PlacementsService {
   async findOne(id: number): Promise<Placement> {
     const placement = await this.placementsRepository.findOne({
       where: { id },
-      relations: { application: true, candidate: true, opportunity: true },
+      relations: { application: true, candidate: true, opportunity: true, placedBy: true },
     });
     if (!placement) throw new NotFoundException(`Placement ${id} not found`);
     return placement;

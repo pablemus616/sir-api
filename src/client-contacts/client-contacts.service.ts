@@ -24,6 +24,7 @@ export class ClientContactsService {
     if (clientId !== undefined) where.clientId = clientId;
     const [items, total] = await this.repo.findAndCount({
       where,
+      relations: { client: true },
       skip: (page - 1) * limit,
       take: limit,
       order: { id: 'DESC' },
@@ -32,7 +33,7 @@ export class ClientContactsService {
   }
 
   async findOne(id: number): Promise<ClientContact> {
-    const entity = await this.repo.findOne({ where: { id } });
+    const entity = await this.repo.findOne({ where: { id }, relations: { client: true } });
     if (!entity) throw new NotFoundException('Client contact not found');
     return entity;
   }

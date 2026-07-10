@@ -6,11 +6,14 @@ import { HandleContactRequestDto } from './dto/handle-contact-request.dto';
 import { Public } from '../config/public.decorator';
 import { ApiKeyGuard } from '../config/api-key.guard';
 import { CurrentUser, type AuthUser } from '../config/current-user.decorator';
+import { RequirePermission } from '../config/permissions.decorator';
 
+@RequirePermission('contact-requests', 'read')
 @Controller('contact-requests')
 export class ContactRequestsController {
   constructor(private readonly contactRequestsService: ContactRequestsService) {}
 
+  // Inbound webhook: public + API-key guarded. PermissionsGuard skips @Public.
   @Public()
   @UseGuards(ApiKeyGuard)
   @Post()
@@ -29,6 +32,7 @@ export class ContactRequestsController {
   }
 
   @Patch(':id/handle')
+  @RequirePermission('contact-requests', 'update')
   handle(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: HandleContactRequestDto,

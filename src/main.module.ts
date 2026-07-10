@@ -26,6 +26,7 @@ import { SnakeNamingStrategy } from './config/snake-naming.strategy';
 import { JwtTokenService } from './config/jwt.service';
 import { JwtAuthGuard } from './config/jwt-auth.guard';
 import { RolesGuard } from './config/roles.guard';
+import { PermissionsGuard } from './config/permissions.guard';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { RolesGuard } from './config/roles.guard';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })
 export class MainModule {}

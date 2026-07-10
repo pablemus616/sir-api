@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 const DUMMY_HASH = '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 import { Session } from './session.entity';
 import { User } from '../users/user.entity';
+import { Employee } from '../employees/employee.entity';
 import { JwtTokenService } from '../config/jwt.service';
 import { AuthUser } from '../config/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
@@ -20,7 +21,10 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto, ip?: string): Promise<{ accessToken: string; refreshToken: string }> {
-    const user = await this.userRepo.findOne({ where: { username: dto.username }, relations: { roles: true } });
+    const user = await this.userRepo.findOne({
+      where: { username: dto.username },
+      relations: { roles: { permissions: true } },
+    });
     if (!user) {
       await bcrypt.compare(dto.password, DUMMY_HASH);
       throw new UnauthorizedException('Invalid credentials');
@@ -42,6 +46,7 @@ export class AuthService {
       sub: user.id,
       employeeId: user.employeeId,
       roles: user.roles.map((r) => r.name),
+      permissions: this.effectivePermissions(user),
       sid,
     });
     return { accessToken, refreshToken: refresh.token };
@@ -58,7 +63,10 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    const user = await this.userRepo.findOne({ where: { id: session.userId }, relations: { roles: true } });
+    const user = await this.userRepo.findOne({
+      where: { id: session.userId },
+      relations: { roles: { permissions: true } },
+    });
     if (!user) throw new UnauthorizedException('Invalid refresh token');
 
     const next = this.jwtService.generateRefreshToken();
@@ -71,6 +79,7 @@ export class AuthService {
       sub: user.id,
       employeeId: user.employeeId,
       roles: user.roles.map((r) => r.name),
+      permissions: this.effectivePermissions(user),
       sid: session.id,
     });
     return { accessToken, refreshToken: next.token };
@@ -80,14 +89,37 @@ export class AuthService {
     await this.sessionRepo.delete(user.sessionId);
   }
 
-  async me(user: AuthUser): Promise<User> {
+  async me(user: AuthUser): Promise<{
+    id: number;
+    username: string;
+    employeeId: number;
+    employee: Employee;
+    roles: { id: number; name: string }[];
+    permissions: string[];
+  }> {
     const found = await this.userRepo.findOne({
       where: { id: user.userId },
-      relations: { roles: true, employee: true },
+      relations: { roles: { permissions: true }, employee: true },
       select: { id: true, username: true, employeeId: true },
     });
     if (!found) throw new NotFoundException('User not found');
-    return found;
+    return {
+      id: found.id,
+      username: found.username,
+      employeeId: found.employeeId,
+      employee: found.employee,
+      roles: found.roles.map((r) => ({ id: r.id, name: r.name })),
+      permissions: this.effectivePermissions(found),
+    };
+  }
+
+  /** Union of the permission names granted by all of the user's roles. */
+  private effectivePermissions(user: User): string[] {
+    const set = new Set<string>();
+    for (const role of user.roles ?? []) {
+      for (const p of role.permissions ?? []) set.add(p.name);
+    }
+    return [...set];
   }
 
   listSessions(user: AuthUser): Promise<Session[]> {

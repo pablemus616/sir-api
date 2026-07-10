@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { PlacementsService } from './placements.service';
 import { Placement } from './placement.entity';
@@ -57,6 +57,21 @@ describe('PlacementsService', () => {
     await expect(
       service.create({ applicationId: 1, placementDate: '2026-06-26' } as any, user as any),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws ConflictException when the application already has a placement', async () => {
+    applications.findOne.mockResolvedValue({
+      id: 1,
+      candidateId: 3,
+      opportunityId: 4,
+      stage: 'hired',
+    } as Application);
+    await expect(
+      service.create(
+        { applicationId: 1, placementDate: '2026-06-26' } as any,
+        user as any,
+      ),
+    ).rejects.toThrow(ConflictException);
   });
 
   it('sets application stage to hired and seals placedByEmployeeId from current user', async () => {

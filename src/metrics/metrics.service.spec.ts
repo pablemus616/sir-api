@@ -315,8 +315,8 @@ describe('MetricsService', () => {
     it('aggregates placements with fee and time-to-fill by recruiter/client', async () => {
       const qb = createQbMock();
       qb.getRawMany.mockResolvedValue([
-        { recruiterId: '4', clientId: '3', count: '2', totalFee: '5000.00', avgTimeToFillSeconds: '864000' },
-        { recruiterId: '4', clientId: '7', count: '1', totalFee: null, avgTimeToFillSeconds: null },
+        { recruiterId: '4', recruiterName: 'Ana Gómez', clientId: '3', clientName: 'Acme', count: '2', totalFee: '5000.00', avgTimeToFillSeconds: '864000' },
+        { recruiterId: '4', recruiterName: 'Ana Gómez', clientId: '7', clientName: 'Globex', count: '1', totalFee: null, avgTimeToFillSeconds: null },
       ]);
       placementRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -324,7 +324,9 @@ describe('MetricsService', () => {
 
       expect(res[0]).toEqual({
         recruiterId: 4,
+        recruiterName: 'Ana Gómez',
         clientId: 3,
+        clientName: 'Acme',
         count: 2,
         totalFee: 5000,
         avgTimeToFillSeconds: 864000,

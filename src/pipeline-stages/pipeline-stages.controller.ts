@@ -13,14 +13,15 @@ import { PipelineStagesService } from './pipeline-stages.service';
 import { CreatePipelineStageDto } from './dto/create-pipeline-stage.dto';
 import { UpdatePipelineStageDto } from './dto/update-pipeline-stage.dto';
 import { QueryPipelineStageDto } from './dto/query-pipeline-stage.dto';
-import { Roles } from '../config/roles.decorator';
+import { RequirePermission } from '../config/permissions.decorator';
 
+// Reads open (feed dropdowns); writes require the explicit permission.
 @Controller('pipeline-stages')
 export class PipelineStagesController {
   constructor(private readonly service: PipelineStagesService) {}
 
   @Post()
-  @Roles('admin')
+  @RequirePermission('pipeline-stages', 'create')
   create(@Body() dto: CreatePipelineStageDto) {
     return this.service.create(dto);
   }
@@ -36,7 +37,7 @@ export class PipelineStagesController {
   }
 
   @Patch(':id')
-  @Roles('admin')
+  @RequirePermission('pipeline-stages', 'update')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePipelineStageDto,
@@ -45,7 +46,7 @@ export class PipelineStagesController {
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequirePermission('pipeline-stages', 'delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }
