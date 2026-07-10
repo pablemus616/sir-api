@@ -49,6 +49,15 @@ export class MetricsController {
     return this.metricsService.contacts(this.scope(filter, user));
   }
 
+  // Interacciones con candidatos (reclutamiento), agrupadas por tipo.
+  @Get('candidate-contacts')
+  candidateContacts(
+    @Query() filter: MetricsFilterDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.metricsService.candidateContacts(this.scope(filter, user));
+  }
+
   // Estadísticas globales del buzón de solicitudes — solo admin (no per-persona).
   @Get('requests')
   @Roles('admin')

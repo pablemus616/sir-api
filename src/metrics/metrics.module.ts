@@ -9,6 +9,7 @@ import { Application } from '../applications/application.entity';
 import { Placement } from '../placements/placement.entity';
 import { Client } from '../clients/client.entity';
 import { Candidate } from '../candidates/candidate.entity';
+import { CandidateContact } from '../candidate-contacts/candidate-contact.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Candidate } from '../candidates/candidate.entity';
       Placement,
       Client,
       Candidate,
+      CandidateContact,
     ]),
   ],
   controllers: [MetricsController],

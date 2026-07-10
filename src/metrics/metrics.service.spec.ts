@@ -8,6 +8,7 @@ import { Application } from '../applications/application.entity';
 import { Placement } from '../placements/placement.entity';
 import { Client } from '../clients/client.entity';
 import { Candidate } from '../candidates/candidate.entity';
+import { CandidateContact } from '../candidate-contacts/candidate-contact.entity';
 
 function createQbMock() {
   const qb: any = {};
@@ -39,6 +40,7 @@ describe('MetricsService', () => {
   let placementRepo: any;
   let clientRepo: any;
   let candidateRepo: any;
+  let candidateContactRepo: any;
 
   beforeEach(async () => {
     const repo = () => ({ createQueryBuilder: jest.fn(), count: jest.fn() });
@@ -52,6 +54,7 @@ describe('MetricsService', () => {
         { provide: getRepositoryToken(Placement), useValue: repo() },
         { provide: getRepositoryToken(Client), useValue: repo() },
         { provide: getRepositoryToken(Candidate), useValue: repo() },
+        { provide: getRepositoryToken(CandidateContact), useValue: repo() },
       ],
     }).compile();
 
@@ -63,6 +66,7 @@ describe('MetricsService', () => {
     placementRepo = module.get(getRepositoryToken(Placement));
     clientRepo = module.get(getRepositoryToken(Client));
     candidateRepo = module.get(getRepositoryToken(Candidate));
+    candidateContactRepo = module.get(getRepositoryToken(CandidateContact));
   });
 
   describe('commercial', () => {
@@ -197,6 +201,51 @@ describe('MetricsService', () => {
         totalCallLength: 450,
         avgCallLength: 150,
       });
+      expect(res[1].totalCallLength).toBe(0);
+      expect(res[1].avgCallLength).toBe(0);
+    });
+  });
+
+  describe('candidateContacts', () => {
+    it('aggregates candidate interactions by type/direction and scopes by recruiter', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([
+        {
+          employeeId: '5',
+          contactTypeId: '1',
+          contactTypeName: 'llamada',
+          direction: 'outbound',
+          count: '4',
+          totalCallLength: '600',
+          avgCallLength: '150.0000',
+        },
+        {
+          employeeId: '5',
+          contactTypeId: null,
+          contactTypeName: null,
+          direction: null,
+          count: '1',
+          totalCallLength: null,
+          avgCallLength: null,
+        },
+      ]);
+      candidateContactRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.candidateContacts({ recruiterId: 5 });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('cc.recruiterEmployeeId = :recruiterId', {
+        recruiterId: 5,
+      });
+      expect(res[0]).toEqual({
+        employeeId: 5,
+        contactTypeId: 1,
+        contactTypeName: 'llamada',
+        direction: 'outbound',
+        count: 4,
+        totalCallLength: 600,
+        avgCallLength: 150,
+      });
+      expect(res[1].contactTypeId).toBeNull();
       expect(res[1].totalCallLength).toBe(0);
       expect(res[1].avgCallLength).toBe(0);
     });

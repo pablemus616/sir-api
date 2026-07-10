@@ -8,6 +8,7 @@ import { Application } from '../applications/application.entity';
 import { Placement } from '../placements/placement.entity';
 import { Client } from '../clients/client.entity';
 import { Candidate } from '../candidates/candidate.entity';
+import { CandidateContact } from '../candidate-contacts/candidate-contact.entity';
 import { MetricsFilterDto } from './dto/metrics-filter.dto';
 
 @Injectable()
@@ -27,6 +28,8 @@ export class MetricsService {
     private readonly clientRepo: Repository<Client>,
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
+    @InjectRepository(CandidateContact)
+    private readonly candidateContactRepo: Repository<CandidateContact>,
   ) {}
 
   private applyOpportunityScope(
@@ -208,6 +211,45 @@ export class MetricsService {
       });
     }
     this.applyDateRange(qb, filter, 'ch.contactTime');
+    const rows = await qb.getRawMany();
+    return rows.map((r) => ({
+      employeeId: Number(r.employeeId),
+      contactTypeId: r.contactTypeId === null ? null : Number(r.contactTypeId),
+      contactTypeName: r.contactTypeName,
+      direction: r.direction,
+      count: Number(r.count) || 0,
+      totalCallLength: Number(r.totalCallLength) || 0,
+      avgCallLength: r.avgCallLength === null ? 0 : Number(r.avgCallLength),
+    }));
+  }
+
+  /**
+   * Interacciones con candidatos agrupadas por tipo y dirección. Misma forma que
+   * `contacts()` pero sobre `candidate_contacts` (reclutador ↔ candidato), no sobre
+   * el historial comercial. Scope no-admin por reclutador (`recruiterId`).
+   */
+  async candidateContacts(filter: MetricsFilterDto) {
+    const qb = this.candidateContactRepo
+      .createQueryBuilder('cc')
+      .leftJoin('cc.contactType', 'ct')
+      .select('cc.recruiterEmployeeId', 'employeeId')
+      .addSelect('ct.id', 'contactTypeId')
+      .addSelect('ct.name', 'contactTypeName')
+      .addSelect('cc.direction', 'direction')
+      .addSelect('COUNT(cc.id)', 'count')
+      .addSelect('SUM(cc.callLength)', 'totalCallLength')
+      .addSelect('AVG(cc.callLength)', 'avgCallLength')
+      .groupBy('cc.recruiterEmployeeId')
+      .addGroupBy('ct.id')
+      .addGroupBy('ct.name')
+      .addGroupBy('cc.direction');
+    // Scope por reclutador (no-admin): solo sus propias interacciones con candidatos.
+    if (filter.recruiterId) {
+      qb.andWhere('cc.recruiterEmployeeId = :recruiterId', {
+        recruiterId: filter.recruiterId,
+      });
+    }
+    this.applyDateRange(qb, filter, 'cc.contactTime');
     const rows = await qb.getRawMany();
     return rows.map((r) => ({
       employeeId: Number(r.employeeId),
