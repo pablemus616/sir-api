@@ -23,18 +23,18 @@ export class NotificationsService {
         from: this.defaultSender,
         templateId: 'd-d1b8156969834eaeb01b443c5b67b099',
         dynamicTemplateData: {
-          nombre: contactRequestDto.nombre,
+          nombre: contactRequestDto.name,
           email: contactRequestDto.email,
-          empresa: contactRequestDto.empresa,
-          mensaje: contactRequestDto.mensaje
+          empresa: contactRequestDto.company,
+          mensaje: contactRequestDto.message
         }
       };
 
        await SendGrid.send(message);
        const dto = new CreateContactRequestDto();
        dto.email = contactRequestDto.email;
-       dto.contactName = contactRequestDto.nombre;
-       dto.requestDesc = contactRequestDto.mensaje;
+       dto.contactName = contactRequestDto.name;
+       dto.requestDesc = contactRequestDto.message;
        await this.contactRequestService.create(dto);
        return contactRequestDto;
   }

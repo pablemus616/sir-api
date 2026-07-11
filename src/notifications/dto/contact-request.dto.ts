@@ -3,13 +3,13 @@ import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 export class ContactRequestDto {
   @IsString()
   @IsNotEmpty()
-  nombre: string;
+  name: string;
   @IsEmail()
   email: string;
   @IsString()
   @IsNotEmpty()
-  empresa: string;
+  company: string;
   @IsString()
   @IsNotEmpty()
-  mensaje: string;
+  message: string;
 }
