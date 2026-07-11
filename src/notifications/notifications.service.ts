@@ -22,9 +22,9 @@ export class NotificationsService {
         to: 'empleos@sir.com.gt',
           cc: "cto@sir.com.gt",
         from: this.defaultSender,
-          subject: "Nueva solicitud de contacto",
         templateId: 'd-d1b8156969834eaeb01b443c5b67b099',
         dynamicTemplateData: {
+          subject: "Nueva solicitud de contacto",
           nombre: contactRequestDto.name,
           email: contactRequestDto.email,
           empresa: contactRequestDto.company,
