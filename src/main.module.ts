@@ -27,6 +27,7 @@ import { JwtTokenService } from './config/jwt.service';
 import { JwtAuthGuard } from './config/jwt-auth.guard';
 import { RolesGuard } from './config/roles.guard';
 import { PermissionsGuard } from './config/permissions.guard';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { PermissionsGuard } from './config/permissions.guard';
     ApplicationsModule,
     PlacementsModule,
     MetricsModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [

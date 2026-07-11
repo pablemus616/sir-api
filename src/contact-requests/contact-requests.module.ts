@@ -8,5 +8,6 @@ import { ContactRequestsController } from './contact-requests.controller';
   imports: [TypeOrmModule.forFeature([ContactRequest])],
   controllers: [ContactRequestsController],
   providers: [ContactRequestsService],
+  exports: [ContactRequestsService]
 })
 export class ContactRequestsModule {}
