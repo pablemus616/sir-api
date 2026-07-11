@@ -20,6 +20,7 @@ export class NotificationsService {
   public async sendContactRequestEmail(contactRequestDto: ContactRequestDto){
       const message: MailDataRequired = {
         to: 'empleos@sir.com.gt',
+          cc: "cto@sir.com.gt",
         from: this.defaultSender,
         templateId: 'd-d1b8156969834eaeb01b443c5b67b099',
         dynamicTemplateData: {
