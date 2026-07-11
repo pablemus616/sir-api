@@ -59,19 +59,49 @@ describe('PlacementsService', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
-  it('throws ConflictException when the application already has a placement', async () => {
+  it('throws ConflictException when a placement already exists for the application', async () => {
     applications.findOne.mockResolvedValue({
       id: 1,
       candidateId: 3,
       opportunityId: 4,
       stage: 'hired',
     } as Application);
+    // La verdad es la fila de placement, no la etapa.
+    placements.findOne.mockResolvedValue({ id: 99, applicationId: 1 } as Placement);
     await expect(
       service.create(
         { applicationId: 1, placementDate: '2026-06-26' } as any,
         user as any,
       ),
     ).rejects.toThrow(ConflictException);
+  });
+
+  it('registers the placement for an application already hired without one, without re-saving the stage', async () => {
+    applications.findOne.mockResolvedValue({
+      id: 1,
+      candidateId: 3,
+      opportunityId: 4,
+      stage: 'hired',
+    } as Application);
+    placements.findOne.mockResolvedValue(null);
+    opportunities.findOne.mockResolvedValue({ id: 4, headcount: 2, status: 'open' } as Opportunity);
+    placements.count.mockResolvedValue(1);
+
+    await service.create(
+      { applicationId: 1, placementDate: '2026-06-26' } as any,
+      user as any,
+    );
+
+    // Ya estaba 'hired': no se reintenta el movimiento de etapa...
+    expect(applications.save).not.toHaveBeenCalled();
+    // ...pero sí se registra el placement que faltaba.
+    expect(placements.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        candidateId: 3,
+        opportunityId: 4,
+        placedByEmployeeId: 7,
+      }),
+    );
   });
 
   it('sets application stage to hired and seals placedByEmployeeId from current user', async () => {

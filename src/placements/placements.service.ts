@@ -29,16 +29,25 @@ export class PlacementsService {
       throw new NotFoundException(`Application ${dto.applicationId} not found`);
     }
 
-    // Una aplicación ya contratada ('hired') ya tiene placement: no se puede
-    // registrar otro para el mismo candidato/aplicación.
-    if (application.stage === ApplicationStage.HIRED) {
+    // La verdad sobre "ya tiene placement" es la existencia de la fila, NO la
+    // etapa: una aplicación puede llegar a 'hired' por el movimiento manual de
+    // etapa sin haber registrado nunca un placement. Bloqueamos solo si ya
+    // existe un placement para esa aplicación.
+    const existingPlacement = await this.placementsRepository.findOne({
+      where: { applicationId: dto.applicationId },
+    });
+    if (existingPlacement) {
       throw new ConflictException(
         `Application ${dto.applicationId} already has a placement`,
       );
     }
 
-    application.stage = ApplicationStage.HIRED;
-    await this.applicationsRepository.save(application);
+    // Idempotente: si ya está 'hired' (llegó por movimiento manual) lo dejamos
+    // igual; si no, este registro lo marca como contratado.
+    if (application.stage !== ApplicationStage.HIRED) {
+      application.stage = ApplicationStage.HIRED;
+      await this.applicationsRepository.save(application);
+    }
 
     const placement = this.placementsRepository.create({
       applicationId: application.id,
