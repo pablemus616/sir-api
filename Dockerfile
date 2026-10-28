@@ -2,13 +2,17 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+# Instalar desde pnpm-lock.yaml: con `npm install` sin lockfile cada build
+# resolvía versiones nuevas (p. ej. typeorm 1.1.x en vez del 1.0.0 probado).
+RUN npm install -g pnpm@10.34.9
 
-RUN npm install
+COPY package.json pnpm-lock.yaml ./
+
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN npm run build
+RUN pnpm run build
 
 FROM node:24-alpine AS production
 
