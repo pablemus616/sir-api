@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { Opportunity } from './opportunity.entity';
 import { PipelineStage } from '../pipeline-stages/pipeline-stage.entity';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto';
@@ -24,7 +24,10 @@ export class OpportunitiesService {
   async create(dto: CreateOpportunityDto): Promise<Opportunity> {
     const stage = await this.pipelineStageRepository.findOne({ where: { id: dto.pipelineStageId } });
     if (!stage) throw new NotFoundException('Pipeline stage not found');
-    const opportunity = this.opportunityRepository.create({ ...dto, probability: stage.probability });
+    const opportunity = this.opportunityRepository.create(dto);
+    // Crear directo en 'Ganada'/'Cerrada'/'Perdida' la cierra: antes quedaba 'open'
+    // en esa columna y no sumaba en "Quetzales ganados".
+    this.moveToStage(opportunity, stage);
     const saved = await this.opportunityRepository.save(opportunity);
     return this.findOne(saved.id);
   }
@@ -82,10 +85,18 @@ export class OpportunitiesService {
   }
 
   async update(id: number, dto: UpdateOpportunityDto): Promise<Opportunity> {
-    await this.findOne(id); // 404 si no existe
+    const current = await this.findOne(id); // 404 si no existe
+    const { pipelineStageId, ...fields } = dto;
     // update() escribe columnas directamente: evita que las relaciones cargadas
     // (client/area/pipelineStage…) reviertan los FK escalares al hacer save().
-    await this.opportunityRepository.update(id, dto);
+    if (Object.keys(fields).length > 0) {
+      await this.opportunityRepository.update(id, fields);
+    }
+    // Cambiar la etapa desde el formulario pasa por changeStage para que el status
+    // la siga (antes podía quedar 'won' en 'Perdida' u 'open' en 'Ganada').
+    if (pipelineStageId !== undefined && pipelineStageId !== current.pipelineStageId) {
+      return this.changeStage(id, { pipelineStageId });
+    }
     return this.findOne(id);
   }
 
@@ -100,20 +111,62 @@ export class OpportunitiesService {
     if (!stage.active) {
       throw new BadRequestException('Pipeline stage is not active');
     }
+    this.moveToStage(opportunity, stage, dto);
+    await this.opportunityRepository.save(opportunity);
+    return this.findOne(id);
+  }
+
+  async win(id: number): Promise<Opportunity> {
+    const opportunity = await this.findOne(id);
+    const stage = await this.closingStage(opportunity.pipelineStage, 'isWon');
+    if (!stage) throw new BadRequestException('No active won stage configured');
+    this.moveToStage(opportunity, stage);
+    await this.opportunityRepository.save(opportunity);
+    return this.findOne(id);
+  }
+
+  async lose(id: number, dto: LoseOpportunityDto): Promise<Opportunity> {
+    const opportunity = await this.findOne(id);
+    const stage = await this.closingStage(opportunity.pipelineStage, 'isLost');
+    if (!stage) throw new BadRequestException('No active lost stage configured');
+    this.moveToStage(opportunity, stage, { lostReason: dto.lostReason });
+    await this.opportunityRepository.save(opportunity);
+    return this.findOne(id);
+  }
+
+  /**
+   * Única transición etapa → status. Crear, mover, ganar y perder pasan por aquí
+   * para que la columna del kanban y el status (lo que suman las métricas, p. ej.
+   * "Quetzales ganados") no se desincronicen.
+   */
+  private moveToStage(
+    opportunity: Opportunity,
+    stage: PipelineStage,
+    opts: { probability?: number; lostReason?: string } = {},
+  ): void {
+    const previous = opportunity.status;
     // Setear la RELACIÓN además del FK escalar: findOne carga `pipelineStage`,
     // y al guardar TypeORM da prioridad a la relación cargada (stage anterior),
     // revirtiendo el cambio si solo se actualiza el escalar.
     opportunity.pipelineStageId = stage.id;
     opportunity.pipelineStage = stage;
-    opportunity.probability = dto.probability ?? stage.probability;
+    opportunity.probability = opts.probability ?? stage.probability;
     if (stage.isWon) {
       opportunity.status = OpportunityStatus.WON;
-      opportunity.wonAt = new Date();
+      // Conserva la fecha original si ya estaba ganada (p. ej. de 'Ganada' a 'Cerrada').
+      if (previous !== OpportunityStatus.WON || !opportunity.wonAt) {
+        opportunity.wonAt = new Date();
+      }
+      opportunity.lostAt = null;
+      opportunity.lostReason = null;
     } else if (stage.isLost) {
       opportunity.status = OpportunityStatus.LOST;
-      opportunity.lostAt = new Date();
-      if (dto.lostReason !== undefined) {
-        opportunity.lostReason = dto.lostReason;
+      if (previous !== OpportunityStatus.LOST || !opportunity.lostAt) {
+        opportunity.lostAt = new Date();
+      }
+      opportunity.wonAt = null;
+      if (opts.lostReason !== undefined) {
+        opportunity.lostReason = opts.lostReason;
       }
     } else {
       opportunity.status = OpportunityStatus.OPEN;
@@ -121,38 +174,20 @@ export class OpportunitiesService {
       opportunity.lostAt = null;
       opportunity.lostReason = null;
     }
-    await this.opportunityRepository.save(opportunity);
-    return this.findOne(id);
   }
 
-  async win(id: number): Promise<Opportunity> {
-    const opportunity = await this.findOne(id);
-    const stage = await this.pipelineStageRepository.findOne({ where: { isWon: true, active: true } });
-    if (!stage) throw new BadRequestException('No active won stage configured');
-    opportunity.status = OpportunityStatus.WON;
-    opportunity.wonAt = new Date();
-    opportunity.lostAt = null;
-    opportunity.lostReason = null;
-    opportunity.pipelineStageId = stage.id;
-    opportunity.probability = stage.probability;
-    await this.opportunityRepository.save(opportunity);
-    return this.findOne(id);
-  }
-
-  async lose(id: number, dto: LoseOpportunityDto): Promise<Opportunity> {
-    const opportunity = await this.findOne(id);
-    const stage = await this.pipelineStageRepository.findOne({ where: { isLost: true, active: true } });
-    if (!stage) throw new BadRequestException('No active lost stage configured');
-    opportunity.status = OpportunityStatus.LOST;
-    opportunity.lostAt = new Date();
-    opportunity.wonAt = null;
-    if (dto.lostReason !== undefined) {
-      opportunity.lostReason = dto.lostReason;
-    }
-    opportunity.pipelineStageId = stage.id;
-    opportunity.probability = stage.probability;
-    await this.opportunityRepository.save(opportunity);
-    return this.findOne(id);
+  /**
+   * Etapa destino al ganar/perder: la actual si ya es de ese tipo (una ganada en
+   * 'Cerrada' se queda en 'Cerrada'); si no, la primera activa por sortOrder, para
+   * que sea determinista cuando hay varias (p. ej. 'Ganada' y 'Cerrada').
+   */
+  private async closingStage(
+    current: PipelineStage | undefined,
+    flag: 'isWon' | 'isLost',
+  ): Promise<PipelineStage | null> {
+    if (current?.[flag] && current.active) return current;
+    const where: FindOptionsWhere<PipelineStage> = { [flag]: true, active: true };
+    return this.pipelineStageRepository.findOne({ where, order: { sortOrder: 'ASC' } });
   }
 
   async sendProposal(id: number, dto: SendProposalDto): Promise<Opportunity> {

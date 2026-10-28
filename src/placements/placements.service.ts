@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Placement } from './placement.entity';
 import { Application } from '../applications/application.entity';
 import { Opportunity } from '../opportunities/opportunity.entity';
+import { OpportunitiesService } from '../opportunities/opportunities.service';
 import { CreatePlacementDto } from './dto/create-placement.dto';
 import { UpdatePlacementDto } from './dto/update-placement.dto';
 import { SearchPlacementsDto } from './dto/search-placements.dto';
@@ -19,6 +20,7 @@ export class PlacementsService {
     private readonly applicationsRepository: Repository<Application>,
     @InjectRepository(Opportunity)
     private readonly opportunitiesRepository: Repository<Opportunity>,
+    private readonly opportunitiesService: OpportunitiesService,
   ) {}
 
   async create(dto: CreatePlacementDto, user: AuthUser): Promise<Placement> {
@@ -67,14 +69,14 @@ export class PlacementsService {
     const opportunity = await this.opportunitiesRepository.findOne({
       where: { id: application.opportunityId },
     });
-    if (opportunity) {
+    if (opportunity && opportunity.status !== OpportunityStatus.WON) {
       const activeCount = await this.placementsRepository.count({
         where: { opportunityId: opportunity.id, status: PlacementStatus.ACTIVE },
       });
       if (activeCount >= opportunity.headcount) {
-        opportunity.status = OpportunityStatus.WON;
-        opportunity.wonAt = new Date();
-        await this.opportunitiesRepository.save(opportunity);
+        // win() también la mueve a la etapa ganada: marcar solo el status la dejaba
+        // 'Ganada' en una columna abierta del kanban.
+        await this.opportunitiesService.win(opportunity.id);
       }
     }
 

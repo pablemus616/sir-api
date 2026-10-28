@@ -6,12 +6,14 @@ import { PlacementsService } from './placements.service';
 import { Placement } from './placement.entity';
 import { Application } from '../applications/application.entity';
 import { Opportunity } from '../opportunities/opportunity.entity';
+import { OpportunitiesService } from '../opportunities/opportunities.service';
 
 describe('PlacementsService', () => {
   let service: PlacementsService;
   let placements: jest.Mocked<Repository<Placement>>;
   let applications: jest.Mocked<Repository<Application>>;
   let opportunities: jest.Mocked<Repository<Opportunity>>;
+  let opportunitiesService: { win: jest.Mock };
 
   const user = { userId: 1, employeeId: 7, roles: ['recruiter'], sessionId: 's' };
 
@@ -43,6 +45,7 @@ describe('PlacementsService', () => {
             save: jest.fn((entity) => Promise.resolve(entity)),
           },
         },
+        { provide: OpportunitiesService, useValue: { win: jest.fn() } },
       ],
     }).compile();
 
@@ -50,6 +53,7 @@ describe('PlacementsService', () => {
     placements = module.get(getRepositoryToken(Placement));
     applications = module.get(getRepositoryToken(Application));
     opportunities = module.get(getRepositoryToken(Opportunity));
+    opportunitiesService = module.get(OpportunitiesService);
   });
 
   it('throws NotFoundException when application does not exist', async () => {
@@ -146,9 +150,27 @@ describe('PlacementsService', () => {
       user as any,
     );
 
-    expect(opportunities.save).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'won', wonAt: expect.any(Date) }),
+    // Vía win(): además del status, la mueve a la etapa ganada.
+    expect(opportunitiesService.win).toHaveBeenCalledWith(4);
+    expect(opportunities.save).not.toHaveBeenCalled();
+  });
+
+  it('does not win again an opportunity that is already won', async () => {
+    applications.findOne.mockResolvedValue({
+      id: 1,
+      candidateId: 3,
+      opportunityId: 4,
+      stage: 'offer',
+    } as Application);
+    opportunities.findOne.mockResolvedValue({ id: 4, headcount: 1, status: 'won' } as Opportunity);
+    placements.count.mockResolvedValue(2);
+
+    await service.create(
+      { applicationId: 1, placementDate: '2026-06-26' } as any,
+      user as any,
     );
+
+    expect(opportunitiesService.win).not.toHaveBeenCalled();
   });
 
   it('keeps opportunity open when active placements are below headcount', async () => {
@@ -166,6 +188,6 @@ describe('PlacementsService', () => {
       user as any,
     );
 
-    expect(opportunities.save).not.toHaveBeenCalled();
+    expect(opportunitiesService.win).not.toHaveBeenCalled();
   });
 });

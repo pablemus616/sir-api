@@ -11,6 +11,7 @@ type MockRepo<T extends object = any> = Partial<Record<keyof Repository<T>, jest
 const createMockRepo = (): MockRepo => ({
   create: jest.fn(),
   save: jest.fn(),
+  update: jest.fn(),
   findOne: jest.fn(),
   remove: jest.fn(),
   createQueryBuilder: jest.fn(),
@@ -44,8 +45,69 @@ describe('OpportunitiesService', () => {
       opportunityRepo.save!.mockResolvedValue(entity);
       opportunityRepo.findOne!.mockResolvedValue(entity);
       const result = await service.create(dto);
-      expect(opportunityRepo.create).toHaveBeenCalledWith(expect.objectContaining({ probability: 40 }));
+      expect(opportunityRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ probability: 40, status: 'open' }),
+      );
       expect(result).toEqual(entity);
+    });
+
+    it('closes the opportunity as won when created directly in a won stage', async () => {
+      const dto: any = { clientId: 1, responsibleEmployeeId: 2, pipelineStageId: 7 };
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 7, probability: 100, isWon: true, isLost: false, active: true,
+      });
+      opportunityRepo.create!.mockImplementation((d: any) => ({ ...d }));
+      opportunityRepo.save!.mockImplementation(async (o: any) => ({ id: 11, ...o }));
+      opportunityRepo.findOne!.mockResolvedValue({ id: 11 });
+      await service.create(dto);
+      expect(opportunityRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipelineStageId: 7, probability: 100, status: 'won', wonAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it('closes the opportunity as lost when created directly in a lost stage', async () => {
+      const dto: any = { clientId: 1, responsibleEmployeeId: 2, pipelineStageId: 8 };
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 8, probability: 0, isWon: false, isLost: true, active: true,
+      });
+      opportunityRepo.create!.mockImplementation((d: any) => ({ ...d }));
+      opportunityRepo.save!.mockImplementation(async (o: any) => ({ id: 12, ...o }));
+      opportunityRepo.findOne!.mockResolvedValue({ id: 12 });
+      await service.create(dto);
+      expect(opportunityRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'lost', lostAt: expect.any(Date), wonAt: null }),
+      );
+    });
+  });
+
+  describe('update', () => {
+    const current = {
+      id: 1, status: 'open', pipelineStageId: 5,
+      pipelineStage: { id: 5, isWon: false, isLost: false, active: true },
+    };
+
+    it('writes plain fields directly without touching the stage', async () => {
+      opportunityRepo.findOne!.mockResolvedValue(current);
+      await service.update(1, { title: 'Nuevo', pipelineStageId: 5 } as any);
+      expect(opportunityRepo.update).toHaveBeenCalledWith(1, { title: 'Nuevo' });
+      expect(pipelineStageRepo.findOne).not.toHaveBeenCalled();
+      expect(opportunityRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('routes a stage change through changeStage so the status follows it', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({ ...current });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 8, probability: 0, isWon: false, isLost: true, active: true,
+      });
+      opportunityRepo.save!.mockImplementation(async (o: any) => {
+        opportunityRepo.findOne!.mockResolvedValue(o);
+        return o;
+      });
+      const result = await service.update(1, { pipelineStageId: 8 } as any);
+      expect(opportunityRepo.update).not.toHaveBeenCalled(); // nada más que escribir
+      expect(result).toMatchObject({ pipelineStageId: 8, status: 'lost', probability: 0 });
     });
   });
 
@@ -139,6 +201,37 @@ describe('OpportunitiesService', () => {
       const result = await service.changeStage(1, { pipelineStageId: 5, probability: 0 });
       expect(result.probability).toBe(0);
     });
+
+    it('clears lost data when moving a lost opportunity to a won stage', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({
+        id: 1, status: 'lost', lostAt: new Date('2026-09-01'), lostReason: 'budget',
+      });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 9, probability: 100, active: true, isWon: true, isLost: false,
+      });
+      const result = await service.changeStage(1, { pipelineStageId: 9 });
+      expect(result).toMatchObject({ status: 'won', lostAt: null, lostReason: null });
+    });
+
+    it('keeps the original wonAt when moving between won stages (Ganada → Cerrada)', async () => {
+      const wonAt = new Date('2026-09-01');
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1, status: 'won', wonAt });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 9, probability: 100, active: true, isWon: true, isLost: false,
+      });
+      const result = await service.changeStage(1, { pipelineStageId: 9 });
+      expect(result.wonAt).toBe(wonAt);
+    });
+
+    it('clears wonAt when moving a won opportunity to a lost stage', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1, status: 'won', wonAt: new Date() });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 8, probability: 0, active: true, isWon: false, isLost: true,
+      });
+      const result = await service.changeStage(1, { pipelineStageId: 8 });
+      expect(result).toMatchObject({ status: 'lost', wonAt: null });
+      expect(result.lostAt).toBeInstanceOf(Date);
+    });
   });
 
   describe('win', () => {
@@ -163,6 +256,52 @@ describe('OpportunitiesService', () => {
       pipelineStageRepo.findOne!.mockResolvedValue(null);
       await expect(service.win(1)).rejects.toThrow(BadRequestException);
     });
+
+    it('also sets the stage relation so TypeORM does not keep the loaded one', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({
+        id: 1, status: 'open', pipelineStageId: 6,
+        pipelineStage: { id: 6, isWon: false, isLost: false, active: true },
+      });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 7, probability: 100, isWon: true, active: true,
+      });
+      opportunityRepo.save!.mockImplementation(async (o: any) => o);
+      await service.win(1);
+      expect(opportunityRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipelineStageId: 7,
+          pipelineStage: expect.objectContaining({ id: 7 }),
+        }),
+      );
+    });
+
+    it('picks the first active won stage by sortOrder', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({ id: 1, status: 'open' });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 7, probability: 100, isWon: true, active: true,
+      });
+      opportunityRepo.save!.mockImplementation(async (o: any) => o);
+      await service.win(1);
+      expect(pipelineStageRepo.findOne).toHaveBeenCalledWith({
+        where: { isWon: true, active: true },
+        order: { sortOrder: 'ASC' },
+      });
+    });
+
+    it('keeps the opportunity in its current won stage (e.g. Cerrada)', async () => {
+      const cerrada = { id: 9, probability: 100, isWon: true, isLost: false, active: true };
+      opportunityRepo.findOne!.mockResolvedValue({
+        id: 1, status: 'open', pipelineStageId: 9, pipelineStage: cerrada,
+      });
+      opportunityRepo.save!.mockImplementation(async (o: any) => {
+        opportunityRepo.findOne!.mockResolvedValue(o);
+        return o;
+      });
+      const result = await service.win(1);
+      expect(pipelineStageRepo.findOne).not.toHaveBeenCalled();
+      expect(result.status).toBe('won');
+      expect(result.pipelineStageId).toBe(9);
+    });
   });
 
   describe('lose', () => {
@@ -186,6 +325,46 @@ describe('OpportunitiesService', () => {
       opportunityRepo.findOne!.mockResolvedValue({ id: 1, status: 'open' });
       pipelineStageRepo.findOne!.mockResolvedValue(null);
       await expect(service.lose(1, { lostReason: 'budget' })).rejects.toThrow(BadRequestException);
+    });
+
+    it('also sets the stage relation and picks the first active lost stage by sortOrder', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({
+        id: 1, status: 'open', pipelineStageId: 6,
+        pipelineStage: { id: 6, isWon: false, isLost: false, active: true },
+      });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 8, probability: 0, isLost: true, active: true,
+      });
+      opportunityRepo.save!.mockImplementation(async (o: any) => o);
+      await service.lose(1, {});
+      expect(pipelineStageRepo.findOne).toHaveBeenCalledWith({
+        where: { isLost: true, active: true },
+        order: { sortOrder: 'ASC' },
+      });
+      expect(opportunityRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipelineStageId: 8,
+          pipelineStage: expect.objectContaining({ id: 8 }),
+        }),
+      );
+    });
+
+    it('moves an opportunity out of a won stage into the lost stage', async () => {
+      opportunityRepo.findOne!.mockResolvedValue({
+        id: 1, status: 'won', pipelineStageId: 9,
+        pipelineStage: { id: 9, isWon: true, isLost: false, active: true },
+      });
+      pipelineStageRepo.findOne!.mockResolvedValue({
+        id: 8, probability: 0, isLost: true, active: true,
+      });
+      opportunityRepo.save!.mockImplementation(async (o: any) => {
+        opportunityRepo.findOne!.mockResolvedValue(o);
+        return o;
+      });
+      const result = await service.lose(1, {});
+      expect(result.status).toBe('lost');
+      expect(result.wonAt).toBeNull();
+      expect(result.pipelineStageId).toBe(8);
     });
   });
 

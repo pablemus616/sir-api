@@ -3,11 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Placement } from './placement.entity';
 import { Application } from '../applications/application.entity';
 import { Opportunity } from '../opportunities/opportunity.entity';
+import { OpportunitiesModule } from '../opportunities/opportunities.module';
 import { PlacementsService } from './placements.service';
 import { PlacementsController } from './placements.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Placement, Application, Opportunity])],
+  imports: [TypeOrmModule.forFeature([Placement, Application, Opportunity]), OpportunitiesModule],
   controllers: [PlacementsController],
   providers: [PlacementsService],
   exports: [PlacementsService],
