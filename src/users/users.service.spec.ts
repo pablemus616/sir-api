@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from './users.service';
 import { User } from './user.entity';
 import { Role } from '../roles/role.entity';
+import { Session } from '../auth/session.entity';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -48,5 +49,18 @@ describe('UsersService', () => {
     userRepo.findOne.mockResolvedValue({ id: 1, roles: [] });
     roleRepo.findOne.mockResolvedValue(null);
     await expect(service.addRole(1, { roleId: 9 })).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('revokes the user sessions before deleting the user, in one transaction', async () => {
+    const manager = { delete: jest.fn() };
+    (userRepo as any).manager = {
+      transaction: jest.fn(async (cb: (m: typeof manager) => Promise<void>) => cb(manager)),
+    };
+    userRepo.findOne.mockResolvedValue({ id: 2 });
+    await service.remove(2);
+    expect(manager.delete.mock.calls).toEqual([
+      [Session, { userId: 2 }],
+      [User, 2],
+    ]);
   });
 });

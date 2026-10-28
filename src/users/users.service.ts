@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
 import { Role } from '../roles/role.entity';
+import { Session } from '../auth/session.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AddUserRoleDto } from './dto/add-user-role.dto';
@@ -58,7 +59,12 @@ export class UsersService {
   async remove(id: number): Promise<void> {
     const found = await this.repo.findOne({ where: { id } });
     if (!found) throw new NotFoundException('User not found');
-    await this.repo.delete(found.id);
+    // Sus sesiones (artefactos de login) se revocan con él: el FK sessions → users
+    // impedía borrar a cualquier usuario que hubiera iniciado sesión.
+    await this.repo.manager.transaction(async (manager) => {
+      await manager.delete(Session, { userId: found.id });
+      await manager.delete(User, found.id);
+    });
   }
 
   async addRole(id: number, dto: AddUserRoleDto): Promise<User> {
