@@ -75,7 +75,11 @@ export class MetricsController {
 
   @Get('placements')
   placements(@Query() filter: MetricsFilterDto, @CurrentUser() user: AuthUser) {
-    return this.metricsService.placements(this.scope(filter, user));
+    // Colocaciones: el scope no-admin es quien colocó. Forzar además al responsable
+    // de la oportunidad ocultaba al reclutador sus colocaciones en oportunidades
+    // de otro comercial.
+    const scoped = this.isAdmin(user) ? filter : { ...filter, recruiterId: user.employeeId };
+    return this.metricsService.placements(scoped);
   }
 
   @Get('charts/by-client')

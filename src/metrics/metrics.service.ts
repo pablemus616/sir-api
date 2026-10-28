@@ -11,6 +11,9 @@ import { Candidate } from '../candidates/candidate.entity';
 import { CandidateContact } from '../candidate-contacts/candidate-contact.entity';
 import { MetricsFilterDto } from './dto/metrics-filter.dto';
 
+// El negocio opera en Guatemala; el servidor y la BD corren en UTC.
+const BUSINESS_TZ = 'America/Guatemala';
+
 @Injectable()
 export class MetricsService {
   constructor(
@@ -61,16 +64,37 @@ export class MetricsService {
     return qb;
   }
 
+  /**
+   * `from`/`to` son días de calendario (YYYY-MM-DD) en hora de Guatemala, ambos
+   * inclusivos. Comparar un timestamptz directo contra '2026-10-31' dejaba fuera
+   * todo ese día (medianoche UTC) y corría los bordes 6 h.
+   */
   private applyDateRange(
     qb: SelectQueryBuilder<any>,
     filter: MetricsFilterDto,
     column: string,
+    columnType: 'timestamptz' | 'date' = 'timestamptz',
   ): SelectQueryBuilder<any> {
+    if (columnType === 'date') {
+      if (filter.from) {
+        qb.andWhere(`${column} >= CAST(:from AS date)`, { from: filter.from });
+      }
+      if (filter.to) {
+        qb.andWhere(`${column} <= CAST(:to AS date)`, { to: filter.to });
+      }
+      return qb;
+    }
     if (filter.from) {
-      qb.andWhere(`${column} >= :from`, { from: filter.from });
+      qb.andWhere(`${column} >= (CAST(:from AS date)::timestamp AT TIME ZONE :tz)`, {
+        from: filter.from,
+        tz: BUSINESS_TZ,
+      });
     }
     if (filter.to) {
-      qb.andWhere(`${column} <= :to`, { to: filter.to });
+      qb.andWhere(`${column} < ((CAST(:to AS date) + 1)::timestamp AT TIME ZONE :tz)`, {
+        to: filter.to,
+        tz: BUSINESS_TZ,
+      });
     }
     return qb;
   }
@@ -116,9 +140,6 @@ export class MetricsService {
   }
 
   async overview(scopeEmployeeId?: number) {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     // clients/activeCandidates/pendingRequests son totales de contexto (org).
     const [clients, activeCandidates, pendingRequests] = await Promise.all([
       this.clientRepo.count(),
@@ -133,10 +154,17 @@ export class MetricsService {
       openOppQb.andWhere('o.responsibleEmployeeId = :scopeEmployeeId', { scopeEmployeeId });
     }
     const openOpportunities = await openOppQb.getCount();
+    // Mes calendario de Guatemala: con `new Date()` en UTC, el último día del mes
+    // desde las 18:00 hora local ya contaba como el mes siguiente.
     const placementsQb = this.placementRepo
       .createQueryBuilder('p')
-      .where('p.placementDate >= :monthStart', { monthStart })
-      .andWhere('p.placementDate < :monthEnd', { monthEnd });
+      .where(`p.placementDate >= date_trunc('month', now() AT TIME ZONE :tz)::date`, {
+        tz: BUSINESS_TZ,
+      })
+      .andWhere(
+        `p.placementDate < (date_trunc('month', now() AT TIME ZONE :tz) + interval '1 month')::date`,
+        { tz: BUSINESS_TZ },
+      );
     if (scopeEmployeeId) {
       placementsQb.andWhere('p.placedByEmployeeId = :scopeEmployeeId', { scopeEmployeeId });
     }
@@ -334,7 +362,7 @@ export class MetricsService {
       .addGroupBy('o.clientId')
       .addGroupBy('c.name');
     this.applyOpportunityScope(qb, filter);
-    this.applyDateRange(qb, filter, 'p.placementDate');
+    this.applyDateRange(qb, filter, 'p.placementDate', 'date');
     if (filter.recruiterId) {
       qb.andWhere('p.placedByEmployeeId = :recruiterId', { recruiterId: filter.recruiterId });
     }

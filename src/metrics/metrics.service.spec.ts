@@ -113,6 +113,24 @@ describe('MetricsService', () => {
       expect(res.wonValue).toBe(0);
       expect(res.weightedValue).toBe(0);
     });
+
+    it('treats from/to as inclusive Guatemala calendar days on timestamptz columns', async () => {
+      const qb = createQbMock();
+      qb.getRawOne.mockResolvedValue({ totalOpportunities: '0', totalWon: '0', proposalsSent: '0' });
+      opportunityRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.commercial({ from: '2026-10-01', to: '2026-10-31' });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'o.createdAt >= (CAST(:from AS date)::timestamp AT TIME ZONE :tz)',
+        { from: '2026-10-01', tz: 'America/Guatemala' },
+      );
+      // `<` del día siguiente: el 31 completo queda dentro (antes `<= '2026-10-31'` lo cortaba).
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'o.createdAt < ((CAST(:to AS date) + 1)::timestamp AT TIME ZONE :tz)',
+        { to: '2026-10-31', tz: 'America/Guatemala' },
+      );
+    });
   });
 
   describe('overview', () => {
@@ -345,6 +363,21 @@ describe('MetricsService', () => {
       await service.placements({ recruiterId: 4 });
 
       expect(qb.andWhere).toHaveBeenCalledWith('p.placedByEmployeeId = :recruiterId', { recruiterId: 4 });
+    });
+
+    it('compares the placementDate date column as plain inclusive dates', async () => {
+      const qb = createQbMock();
+      qb.getRawMany.mockResolvedValue([]);
+      placementRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.placements({ from: '2026-10-01', to: '2026-10-31' });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('p.placementDate >= CAST(:from AS date)', {
+        from: '2026-10-01',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('p.placementDate <= CAST(:to AS date)', {
+        to: '2026-10-31',
+      });
     });
   });
 
